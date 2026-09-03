@@ -43,12 +43,50 @@ end
 local oldGui = getSafeGuiParent():FindFirstChild("SkeetwareUI")
 if oldGui then oldGui:Destroy() end
 
+-- Clean up old blur effects
+pcall(function()
+	local lighting = game:GetService("Lighting")
+	local oldBlur = lighting:FindFirstChild("SkeetwareBlur")
+	if oldBlur then oldBlur:Destroy() end
+end)
+
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "SkeetwareUI"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = getSafeGuiParent()
+
+-- Blur overlay system
+local blurEffect = nil
+pcall(function()
+	local lighting = game:GetService("Lighting")
+	blurEffect = Instance.new("BlurEffect")
+	blurEffect.Name = "SkeetwareBlur"
+	blurEffect.Size = 0
+	blurEffect.Parent = lighting
+end)
+
+local blurOverlay = Instance.new("Frame")
+blurOverlay.Name = "BlurOverlay"
+blurOverlay.Size = UDim2.fromScale(1, 1)
+blurOverlay.Position = UDim2.fromScale(0, 0)
+blurOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+blurOverlay.BackgroundTransparency = 1
+blurOverlay.BorderSizePixel = 0
+blurOverlay.ZIndex = 5
+blurOverlay.Visible = false
+blurOverlay.Parent = screenGui
+
+-- Subtle vignette gradient on blur overlay for depth
+local blurVignette = Instance.new("UIGradient")
+blurVignette.Rotation = 0
+blurVignette.Transparency = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 0.15),
+	NumberSequenceKeypoint.new(0.5, 0),
+	NumberSequenceKeypoint.new(1, 0.15),
+})
+blurVignette.Parent = blurOverlay
 
 local Library = {
 	Version   = "5.0.0",
@@ -185,7 +223,10 @@ function Util.CreateHardBorder(parent, size, pos, bgTop, bgBottom, isMainWin)
 		Rotation = 90,
 		Color = ColorSequence.new({
 			ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 255, 255)),
-			ColorSequenceKeypoint.new(1.0, Color3.fromRGB(180, 180, 180)),
+			ColorSequenceKeypoint.new(0.15, Color3.fromRGB(240, 240, 240)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(215, 215, 215)),
+			ColorSequenceKeypoint.new(0.85, Color3.fromRGB(195, 195, 195)),
+			ColorSequenceKeypoint.new(1.0, Color3.fromRGB(175, 175, 175)),
 		}),
 		Parent = inner,
 	})
@@ -570,11 +611,13 @@ function Library:CreateWindow(cfg)
 	})
 
 	local bgGradient = New("UIGradient", {
-		Rotation = 45,
+		Rotation = 135,
 		Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(28, 28, 32)),
-			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(32, 32, 36)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(28, 28, 32)),
+			ColorSequenceKeypoint.new(0.0, Color3.fromRGB(34, 34, 40)),
+			ColorSequenceKeypoint.new(0.2, Color3.fromRGB(28, 28, 33)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(22, 22, 26)),
+			ColorSequenceKeypoint.new(0.8, Color3.fromRGB(26, 26, 30)),
+			ColorSequenceKeypoint.new(1.0, Color3.fromRGB(18, 18, 22)),
 		}),
 		Parent = animBg,
 	})
@@ -618,9 +661,63 @@ function Library:CreateWindow(cfg)
 		BackgroundColor3 = Library.Theme.GroupTop,
 		BorderSizePixel = 0,
 		ZIndex = 10,
+		ClipsDescendants = true,
 		Parent = winInner,
 	})
 	Util.RegisterTheme(sidebar, "BackgroundColor3", "MainColor")
+
+	-- Rich multi-tone gradient on sidebar for depth
+	local sidebarGrad = New("UIGradient", {
+		Rotation = 90,
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0.0, Color3.fromRGB(38, 38, 44)),
+			ColorSequenceKeypoint.new(0.15, Color3.fromRGB(28, 28, 33)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(22, 22, 26)),
+			ColorSequenceKeypoint.new(0.85, Color3.fromRGB(18, 18, 21)),
+			ColorSequenceKeypoint.new(1.0, Color3.fromRGB(14, 14, 16)),
+		}),
+		Parent = sidebar,
+	})
+
+	-- Subtle accent-tinted glow at top of sidebar
+	local sidebarAccentGlow = New("Frame", {
+		Size = UDim2.new(1, 0, 0, 80),
+		Position = UDim2.fromOffset(0, 0),
+		BackgroundColor3 = Library.Theme.Accent1,
+		BackgroundTransparency = 0.92,
+		BorderSizePixel = 0,
+		ZIndex = 10,
+		Parent = sidebar,
+	})
+	Util.RegisterTheme(sidebarAccentGlow, "BackgroundColor3", "AccentColor")
+	New("UIGradient", {
+		Rotation = 90,
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(0.6, 0.7),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+		Parent = sidebarAccentGlow,
+	})
+
+	-- Sidebar right edge separator with gradient fade
+	local sidebarEdge = New("Frame", {
+		Size = UDim2.new(0, 1, 1, 0),
+		Position = UDim2.new(1, -1, 0, 0),
+		BackgroundColor3 = Library.Theme.MidBorder,
+		BorderSizePixel = 0,
+		ZIndex = 11,
+		Parent = sidebar,
+	})
+	New("UIGradient", {
+		Rotation = 90,
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.3),
+			NumberSequenceKeypoint.new(0.5, 0),
+			NumberSequenceKeypoint.new(1, 0.5),
+		}),
+		Parent = sidebarEdge,
+	})
 
 	-- Branding section
 	local brandingSection = New("Frame", {
@@ -631,7 +728,7 @@ function Library:CreateWindow(cfg)
 		Parent = sidebar,
 	})
 
-	New("ImageLabel", {
+	local brandIcon = New("ImageLabel", {
 		Size = UDim2.fromOffset(32, 32),
 		Position = UDim2.fromOffset(14, 14),
 		BackgroundTransparency = 1,
@@ -640,6 +737,7 @@ function Library:CreateWindow(cfg)
 		ZIndex = 12,
 		Parent = brandingSection,
 	})
+	Util.RegisterTheme(brandIcon, "ImageColor3", "AccentColor")
 
 	New("TextLabel", {
 		Size = UDim2.new(1, -56, 0, 20),
@@ -779,15 +877,31 @@ function Library:CreateWindow(cfg)
 		if not gp and input.KeyCode == Library.ToggleKey then
 			Library.Open = not Library.Open
 			if Library.Open then
+				-- Show blur overlay
+				blurOverlay.Visible = true
+				blurOverlay.BackgroundTransparency = 1
+				Util.Tween(blurOverlay, 0.25, { BackgroundTransparency = 0.55 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+				if blurEffect then
+					blurEffect.Size = 0
+					Util.Tween(blurEffect, 0.3, { Size = 14 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+				end
+
 				winOuter.Visible = true
 				winOuter.Size = UDim2.fromOffset(winSize.X.Offset - 18, winSize.Y.Offset - 18)
 				Util.Tween(winOuter, 0.2, { Size = winSize }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 				Util.PlaySound("open")
 			else
+				-- Hide blur overlay
+				Util.Tween(blurOverlay, 0.2, { BackgroundTransparency = 1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+				if blurEffect then
+					Util.Tween(blurEffect, 0.25, { Size = 0 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+				end
+
 				local t = Util.Tween(winOuter, 0.15, { Size = UDim2.fromOffset(winSize.X.Offset - 18, winSize.Y.Offset - 18) }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 				t.Completed:Connect(function()
 					winOuter.Visible = false
 					winOuter.Size = winSize
+					blurOverlay.Visible = false
 				end)
 				Util.PlaySound("close")
 			end
@@ -804,6 +918,27 @@ function Library:CreateWindow(cfg)
 		Parent = winInner,
 	})
 
+	-- Subtle accent-tinted glow in top-left corner of content area
+	local contentAccentGlow = New("Frame", {
+		Size = UDim2.new(0.5, 0, 0.4, 0),
+		Position = UDim2.fromOffset(0, 0),
+		BackgroundColor3 = Library.Theme.Accent1,
+		BackgroundTransparency = 0.96,
+		BorderSizePixel = 0,
+		ZIndex = 9,
+		Parent = contentHolder,
+	})
+	Util.RegisterTheme(contentAccentGlow, "BackgroundColor3", "AccentColor")
+	New("UIGradient", {
+		Rotation = 135,
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(0.4, 0.6),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+		Parent = contentAccentGlow,
+	})
+
 	-- Sleek authentic bottom footer status bar
 	local footerBar = New("Frame", {
 		Size = UDim2.new(1, -6, 0, 20),
@@ -811,9 +946,42 @@ function Library:CreateWindow(cfg)
 		BackgroundColor3 = Library.Theme.GroupBottom,
 		BorderSizePixel = 0,
 		ZIndex = 10,
+		ClipsDescendants = true,
 		Parent = winInner,
 	})
 	Util.RegisterTheme(footerBar, "BackgroundColor3", "BackgroundColor")
+
+	-- Footer multi-tone gradient for depth
+	New("UIGradient", {
+		Rotation = 0,
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0.0, Color3.fromRGB(20, 20, 24)),
+			ColorSequenceKeypoint.new(0.3, Color3.fromRGB(24, 24, 28)),
+			ColorSequenceKeypoint.new(0.7, Color3.fromRGB(22, 22, 26)),
+			ColorSequenceKeypoint.new(1.0, Color3.fromRGB(18, 18, 21)),
+		}),
+		Parent = footerBar,
+	})
+
+	-- Subtle accent line on footer left
+	local footerAccentLine = New("Frame", {
+		Size = UDim2.new(0.3, 0, 0, 1),
+		Position = UDim2.fromOffset(0, 0),
+		BackgroundColor3 = Library.Theme.Accent1,
+		BackgroundTransparency = 0.8,
+		BorderSizePixel = 0,
+		ZIndex = 12,
+		Parent = footerBar,
+	})
+	Util.RegisterTheme(footerAccentLine, "BackgroundColor3", "AccentColor")
+	New("UIGradient", {
+		Rotation = 0,
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+		Parent = footerAccentLine,
+	})
 
 	New("Frame", {
 		Size = UDim2.new(1, 0, 0, 1),
@@ -1681,8 +1849,29 @@ function Library:CreateWindow(cfg)
 					Parent = row,
 				})
 				Util.RegisterTheme(hoverBg, "BackgroundColor3", "AccentColor")
+				New("UIGradient", {
+					Rotation = 0,
+					Transparency = NumberSequence.new({
+						NumberSequenceKeypoint.new(0, 0.5),
+						NumberSequenceKeypoint.new(0.5, 0),
+						NumberSequenceKeypoint.new(1, 0.5),
+					}),
+					Parent = hoverBg,
+				})
 
 				local boxOuter, boxInner = Util.CreateHardBorder(row, UDim2.fromOffset(14, 14), UDim2.fromOffset(0, 2), Library.Theme.ControlTop, Library.Theme.ControlBottom)
+
+				-- Accent-colored border glow when active (overlays on top of outer border)
+				local accentBorderGlow = New("Frame", {
+					Size = UDim2.new(1, 2, 1, 2),
+					Position = UDim2.fromOffset(-1, -1),
+					BackgroundColor3 = Library.Theme.Accent1,
+					BackgroundTransparency = state and 0.6 or 1,
+					BorderSizePixel = 0,
+					ZIndex = boxOuter.ZIndex - 1,
+					Parent = boxOuter,
+				})
+				Util.RegisterTheme(accentBorderGlow, "BackgroundColor3", "AccentColor")
 
 				local fill = New("Frame", {
 					Size = UDim2.fromScale(1, 1),
@@ -1694,11 +1883,14 @@ function Library:CreateWindow(cfg)
 				})
 				Util.RegisterTheme(fill, "BackgroundColor3", "AccentColor")
 
+				-- Richer multi-tone gradient on fill for depth
 				New("UIGradient", {
-					Rotation = 90,
+					Rotation = 135,
 					Color = ColorSequence.new({
 						ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 255, 255)),
-						ColorSequenceKeypoint.new(1.0, Color3.fromRGB(195, 195, 195)),
+						ColorSequenceKeypoint.new(0.3, Color3.fromRGB(235, 235, 240)),
+						ColorSequenceKeypoint.new(0.7, Color3.fromRGB(210, 210, 218)),
+						ColorSequenceKeypoint.new(1.0, Color3.fromRGB(185, 185, 195)),
 					}),
 					Parent = fill,
 				})
@@ -1710,7 +1902,7 @@ function Library:CreateWindow(cfg)
 					Position = UDim2.fromScale(0.5, 0.5),
 					BackgroundTransparency = 1,
 					Image = Library.Icons.Check,
-					ImageColor3 = Color3.fromRGB(16, 16, 20),
+					ImageColor3 = Color3.fromRGB(12, 12, 16),
 					ImageTransparency = state and 0 or 1,
 					ZIndex = boxInner.ZIndex + 2,
 					Parent = boxInner,
@@ -1753,6 +1945,7 @@ function Library:CreateWindow(cfg)
 
 					if val then
 						Util.Tween(fill, 0.14, { BackgroundTransparency = 0 })
+						Util.Tween(accentBorderGlow, 0.16, { BackgroundTransparency = 0.6 })
 						checkIcon.ImageTransparency = 0
 						checkIcon.Size = UDim2.fromOffset(4, 4)
 						Util.Tween(checkIcon, 0.18, { Size = UDim2.fromOffset(10, 10) }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
@@ -1760,6 +1953,7 @@ function Library:CreateWindow(cfg)
 						Util.Tween(boxInner, 0.14, { BackgroundColor3 = Library.Theme.ControlHover })
 					else
 						Util.Tween(fill, 0.12, { BackgroundTransparency = 1 })
+						Util.Tween(accentBorderGlow, 0.14, { BackgroundTransparency = 1 })
 						Util.Tween(checkIcon, 0.12, { Size = UDim2.fromOffset(0, 0), ImageTransparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 						Util.Tween(label, 0.14, { TextColor3 = Library.Theme.TextDim })
 						Util.Tween(boxInner, 0.14, { BackgroundColor3 = Library.Theme.ControlTop })
