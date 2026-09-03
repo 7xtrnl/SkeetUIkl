@@ -104,6 +104,16 @@ local Library = {
 		Swords    = "rbxassetid://10734975692",
 		Check     = "rbxassetid://10709790644",
 		Chevron   = "rbxassetid://10709790948",
+		Search    = "rbxassetid://10734943763",
+		Info      = "rbxassetid://10723415903",
+		Alert     = "rbxassetid://10734950020",
+		Key       = "rbxassetid://10709791437",
+		Edit      = "rbxassetid://10734944444",
+		Copy      = "rbxassetid://10709790757",
+		Refresh   = "rbxassetid://10734942548",
+		Close     = "rbxassetid://10709791108",
+		Layers    = "rbxassetid://10723387563",
+		Folder    = "rbxassetid://10723387693",
 	}
 }
 
@@ -463,35 +473,53 @@ New("UIListLayout", {
 })
 
 function Library:Notify(cfg)
-	local title = cfg.Title or "Notification"
-	local text  = cfg.Text or ""
-	local dur   = cfg.Duration or 3.5
+	local title    = cfg.Title or "Notification"
+	local text     = cfg.Text or ""
+	local dur      = cfg.Duration or 3.5
+	local nType    = cfg.Type or "Info"
+	local iconId   = cfg.Icon or (nType == "Success" and Library.Icons.Check or (nType == "Warning" and Library.Icons.Alert or Library.Icons.Info))
 
-	local notifOuter, notifInner = Util.CreateHardBorder(notifHolder, UDim2.fromOffset(260, 0), nil, Library.Theme.MainTop, Library.Theme.MainBottom, true)
+	local notifOuter, notifInner = Util.CreateHardBorder(notifHolder, UDim2.fromOffset(270, 56), nil, Library.Theme.MainTop, Library.Theme.MainBottom, true)
 	notifOuter.ClipsDescendants = true
+	notifOuter.Position = UDim2.fromOffset(60, 0)
 	Util.AddSkeetGradientBar(notifInner, 2)
 
+	local iconBadge = New("ImageLabel", {
+		Size = UDim2.fromOffset(16, 16),
+		Position = UDim2.fromOffset(8, 7),
+		BackgroundTransparency = 1,
+		Image = iconId,
+		ImageColor3 = (nType == "Warning" or nType == "Error") and Library.Theme.Risky or Library.Theme.Accent1,
+		Parent = notifInner,
+	})
+	if nType ~= "Warning" and nType ~= "Error" then
+		Util.RegisterTheme(iconBadge, "ImageColor3", "AccentColor")
+	end
+
 	local titleLbl = New("TextLabel", {
-		Size = UDim2.new(1, -16, 0, 18),
-		Position = UDim2.fromOffset(8, 5),
+		Size = UDim2.new(1, -34, 0, 16),
+		Position = UDim2.fromOffset(28, 6),
 		BackgroundTransparency = 1,
 		Font = Library.Theme.FontBold,
 		TextSize = Library.Theme.FontSize,
-		TextColor3 = Library.Theme.Accent1,
+		TextColor3 = (nType == "Warning" or nType == "Error") and Library.Theme.Risky or Library.Theme.Accent1,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Text = title,
 		Parent = notifInner,
 	})
-	Util.RegisterTheme(titleLbl, "TextColor3", "AccentColor")
+	if nType ~= "Warning" and nType ~= "Error" then
+		Util.RegisterTheme(titleLbl, "TextColor3", "AccentColor")
+	end
 
 	local textLbl = New("TextLabel", {
-		Size = UDim2.new(1, -16, 0, 26),
-		Position = UDim2.fromOffset(8, 22),
+		Size = UDim2.new(1, -16, 0, 24),
+		Position = UDim2.fromOffset(8, 24),
 		BackgroundTransparency = 1,
 		Font = Library.Theme.Font,
 		TextSize = Library.Theme.FontSize - 1,
 		TextColor3 = Library.Theme.Text,
 		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
 		TextWrapped = true,
 		Text = text,
 		Parent = notifInner,
@@ -501,17 +529,20 @@ function Library:Notify(cfg)
 	local timerBar = New("Frame", {
 		Size = UDim2.new(1, 0, 0, 2),
 		Position = UDim2.new(0, 0, 1, -2),
-		BackgroundColor3 = Library.Theme.Accent1,
+		BackgroundColor3 = (nType == "Warning" or nType == "Error") and Library.Theme.Risky or Library.Theme.Accent1,
 		BorderSizePixel = 0,
 		Parent = notifInner,
 	})
-	Util.RegisterTheme(timerBar, "BackgroundColor3", "AccentColor")
+	if nType ~= "Warning" and nType ~= "Error" then
+		Util.RegisterTheme(timerBar, "BackgroundColor3", "AccentColor")
+	end
 
-	Util.Tween(notifOuter, 0.18, { Size = UDim2.fromOffset(260, 54) })
+	-- Slide-in animation
+	Util.Tween(notifOuter, 0.22, { Position = UDim2.fromOffset(0, 0) }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 	Util.Tween(timerBar, dur, { Size = UDim2.new(0, 0, 0, 2) }, Enum.EasingStyle.Linear)
 
 	task.delay(dur, function()
-		local out = Util.Tween(notifOuter, 0.16, { Size = UDim2.fromOffset(260, 0) })
+		local out = Util.Tween(notifOuter, 0.2, { Position = UDim2.fromOffset(120, 0) }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 		out.Completed:Connect(function() notifOuter:Destroy() end)
 	end)
 end
@@ -651,7 +682,7 @@ function Library:CreateWindow(cfg)
 	})
 
 	local titleBar = New("Frame", {
-		Size = UDim2.new(1, -150, 0, 30),
+		Size = UDim2.new(1, -150, 0, 32),
 		Position = UDim2.fromOffset(147, 3),
 		BackgroundTransparency = 1,
 		ZIndex = 10,
@@ -659,8 +690,8 @@ function Library:CreateWindow(cfg)
 	})
 
 	local titleLabel = New("TextLabel", {
-		Size = UDim2.new(1, -20, 1, 0),
-		Position = UDim2.fromOffset(12, 0),
+		Size = UDim2.new(0.4, 0, 1, 0),
+		Position = UDim2.fromOffset(10, 0),
 		BackgroundTransparency = 1,
 		Font = Library.Theme.FontBold,
 		TextSize = Library.Theme.FontSize + 1,
@@ -672,32 +703,67 @@ function Library:CreateWindow(cfg)
 	})
 	Util.RegisterTheme(titleLabel, "TextColor3", "FontColor")
 
+	-- Integrated sleek search box on the right of title bar
+	local searchOuter, searchInner = Util.CreateHardBorder(titleBar, UDim2.new(0, 175, 0, 22), UDim2.new(1, -185, 0.5, -11), Library.Theme.ControlTop, Library.Theme.ControlBottom)
+	searchOuter.ZIndex = 11
+
+	local searchIcon = New("ImageLabel", {
+		Size = UDim2.fromOffset(12, 12),
+		Position = UDim2.fromOffset(6, 5),
+		BackgroundTransparency = 1,
+		Image = Library.Icons.Search,
+		ImageColor3 = Library.Theme.TextDim,
+		ZIndex = 12,
+		Parent = searchInner,
+	})
+
+	local searchInput = New("TextBox", {
+		Size = UDim2.new(1, -26, 1, 0),
+		Position = UDim2.fromOffset(22, 0),
+		BackgroundTransparency = 1,
+		Font = Library.Theme.Font,
+		TextSize = Library.Theme.FontSize - 1,
+		TextColor3 = Library.Theme.Text,
+		PlaceholderText = "Search features...",
+		PlaceholderColor3 = Library.Theme.TextDark,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ClearTextOnFocus = false,
+		ZIndex = 12,
+		Parent = searchInner,
+	})
+
+	searchInput:GetPropertyChangedSignal("Text"):Connect(function()
+		Library.SearchQuery = string.lower(searchInput.Text)
+		for _, control in ipairs(Library.SearchableControls) do
+			if control.Row and control.SearchText then
+				local matches = string.find(control.SearchText, Library.SearchQuery) ~= nil
+				control.Row.Visible = matches or Library.SearchQuery == ""
+			end
+		end
+	end)
+
 	New("Frame", {
-		Size = UDim2.new(1, -150, 0, 1),
-		Position = UDim2.fromOffset(147, 32),
+		Size = UDim2.new(1, -147, 0, 1),
+		Position = UDim2.fromOffset(147, 35),
 		BackgroundColor3 = Library.Theme.MidBorder,
 		BorderSizePixel = 0,
 		ZIndex = 10,
 		Parent = winInner,
 	})
 
-	local tabListFrame = New("Frame", {
-		Size = UDim2.new(1, -170, 0, 28),
-		Position = UDim2.fromOffset(147, 38),
-		BackgroundTransparency = 1,
-		ZIndex = 10,
-		Parent = winInner,
-	})
-
+	-- Window dragging support from titleBar & branding
 	do
 		local dragging, dragStart, startPos
-		titleBar.InputBegan:Connect(function(input)
+		local function startDrag(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 then
 				dragging = true
 				dragStart = input.Position
 				startPos = winOuter.Position
 			end
-		end)
+		end
+		titleBar.InputBegan:Connect(startDrag)
+		brandingSection.InputBegan:Connect(startDrag)
+
 		UserInputService.InputChanged:Connect(function(input)
 			if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
 				local delta = input.Position - dragStart
@@ -714,11 +780,11 @@ function Library:CreateWindow(cfg)
 			Library.Open = not Library.Open
 			if Library.Open then
 				winOuter.Visible = true
-				winOuter.Size = UDim2.fromOffset(winSize.X.Offset - 14, winSize.Y.Offset - 14)
-				Util.Tween(winOuter, 0.18, { Size = winSize }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+				winOuter.Size = UDim2.fromOffset(winSize.X.Offset - 18, winSize.Y.Offset - 18)
+				Util.Tween(winOuter, 0.2, { Size = winSize }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 				Util.PlaySound("open")
 			else
-				local t = Util.Tween(winOuter, 0.13, { Size = UDim2.fromOffset(winSize.X.Offset - 14, winSize.Y.Offset - 14) }, Enum.EasingStyle.Quart)
+				local t = Util.Tween(winOuter, 0.15, { Size = UDim2.fromOffset(winSize.X.Offset - 18, winSize.Y.Offset - 18) }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 				t.Completed:Connect(function()
 					winOuter.Visible = false
 					winOuter.Size = winSize
@@ -728,97 +794,102 @@ function Library:CreateWindow(cfg)
 		end
 	end)
 
-
-
-	-- Search Bar
-	local searchBarOuter, searchBarInner = Util.CreateHardBorder(winInner, UDim2.new(1, -170, 0, 24), UDim2.fromOffset(147, 70), Library.Theme.ControlTop, Library.Theme.ControlBottom)
-	searchBarOuter.ZIndex = 10
-	searchBarOuter.Visible = false -- Hide search bar since tabs are now in sidebar
-
-	local searchIcon = New("ImageLabel", {
-		Size = UDim2.fromOffset(14, 14),
-		Position = UDim2.fromOffset(8, 5),
+	-- Single dedicated contentHolder strictly placed right of the sidebar
+	local contentHolder = New("Frame", {
+		Size = UDim2.new(1, -155, 1, -62),
+		Position = UDim2.fromOffset(148, 38),
 		BackgroundTransparency = 1,
-		Image = Library.Icons.Shield,
-		ImageColor3 = Library.Theme.TextDim,
-		ZIndex = 11,
-		Parent = searchBarInner,
+		ClipsDescendants = false,
+		ZIndex = 10,
+		Parent = winInner,
 	})
 
-	local searchInput = New("TextBox", {
-		Size = UDim2.new(1, -32, 1, 0),
-		Position = UDim2.fromOffset(24, 0),
+	-- Sleek authentic bottom footer status bar
+	local footerBar = New("Frame", {
+		Size = UDim2.new(1, -6, 0, 20),
+		Position = UDim2.new(0, 3, 1, -23),
+		BackgroundColor3 = Library.Theme.GroupBottom,
+		BorderSizePixel = 0,
+		ZIndex = 10,
+		Parent = winInner,
+	})
+	Util.RegisterTheme(footerBar, "BackgroundColor3", "BackgroundColor")
+
+	New("Frame", {
+		Size = UDim2.new(1, 0, 0, 1),
+		Position = UDim2.fromOffset(0, 0),
+		BackgroundColor3 = Library.Theme.MidBorder,
+		BorderSizePixel = 0,
+		ZIndex = 11,
+		Parent = footerBar,
+	})
+
+	local footerUser = New("TextLabel", {
+		Size = UDim2.new(0.5, -10, 1, 0),
+		Position = UDim2.fromOffset(10, 0),
 		BackgroundTransparency = 1,
 		Font = Library.Theme.Font,
-		TextSize = Library.Theme.FontSize,
-		TextColor3 = Library.Theme.Text,
-		PlaceholderText = "Search settings...",
-		PlaceholderColor3 = Library.Theme.TextDark,
+		TextSize = Library.Theme.FontSize - 2,
+		TextColor3 = Library.Theme.TextDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		ClearTextOnFocus = false,
+		Text = string.format("skeetware | %s", LocalPlayer and LocalPlayer.DisplayName or "User"),
 		ZIndex = 11,
-		Parent = searchBarInner,
+		Parent = footerBar,
 	})
 
-	searchInput:GetPropertyChangedSignal("Text"):Connect(function()
-		Library.SearchQuery = string.lower(searchInput.Text)
-		for _, control in ipairs(Library.SearchableControls) do
-			if control.Row and control.SearchText then
-				local matches = string.find(control.SearchText, Library.SearchQuery) ~= nil
-				control.Row.Visible = matches or Library.SearchQuery == ""
-			end
+	local footerStats = New("TextLabel", {
+		Size = UDim2.new(0.5, -10, 1, 0),
+		Position = UDim2.new(0.5, 0, 0, 0),
+		BackgroundTransparency = 1,
+		Font = Library.Theme.Font,
+		TextSize = Library.Theme.FontSize - 2,
+		TextColor3 = Library.Theme.TextDim,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Text = "60 fps | 14 ms | [INSERT]",
+		ZIndex = 11,
+		Parent = footerBar,
+	})
+
+	local fFpsCount = 0
+	local fLastUpdate = tick()
+	RunService.RenderStepped:Connect(function()
+		fFpsCount = fFpsCount + 1
+		if tick() - fLastUpdate >= 0.5 then
+			local curFps = math.floor(fFpsCount / (tick() - fLastUpdate))
+			local curPing = math.floor((LocalPlayer and LocalPlayer:GetNetworkPing() or 0.015) * 1000)
+			footerStats.Text = string.format("%d fps | %d ms | [INSERT]", curFps, curPing)
+			fFpsCount = 0
+			fLastUpdate = tick()
 		end
 	end)
-
-	local contentHolder = New("Frame", {
-		Size = UDim2.new(1, -170, 1, -40),
-		Position = UDim2.fromOffset(147, 38),
-		BackgroundTransparency = 1,
-		ZIndex = 10,
-		Parent = winInner,
-	})
-	New("UIListLayout", {
-		FillDirection = Enum.FillDirection.Horizontal,
-		Padding = UDim.new(0, 4),
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Parent = tabListFrame,
-	})
-
-	local contentHolder = New("Frame", {
-		Size = UDim2.new(1, -24, 1, -78),
-		Position = UDim2.fromOffset(12, 70),
-		BackgroundTransparency = 1,
-		ZIndex = 10,
-		Parent = winInner,
-	})
 
 	local Window = { Tabs = {} }
 
 	function Window:AddTab(tabName, iconAsset)
 		local tabBtnOuter, tabBtnInner = Util.CreateHardBorder(sidebarTabList, UDim2.new(1, -8, 0, 32), nil, Library.Theme.ControlTop, Library.Theme.ControlBottom)
 
-		local tabGlow = New("Frame", {
-			Size = UDim2.new(1, 4, 1, 4),
-			Position = UDim2.fromOffset(-2, -2),
+		local activePill = New("Frame", {
+			Size = UDim2.new(0, 3, 0, 0),
+			Position = UDim2.new(0, 0, 0.5, 0),
+			AnchorPoint = Vector2.new(0, 0.5),
 			BackgroundColor3 = Library.Theme.Accent1,
-			BackgroundTransparency = 0.95,
 			BorderSizePixel = 0,
-			ZIndex = tabBtnOuter.ZIndex - 1,
-			Parent = tabBtnOuter,
+			ZIndex = 14,
+			Parent = tabBtnInner,
 		})
-		tabGlow.Visible = false
-		Util.RegisterTheme(tabGlow, "BackgroundColor3", "AccentColor")
+		Util.RegisterTheme(activePill, "BackgroundColor3", "AccentColor")
 
 		local hasIcon = (iconAsset ~= nil and typeof(iconAsset) == "string")
+		local tabIcon = nil
 
 		if hasIcon then
-			New("ImageLabel", {
+			tabIcon = New("ImageLabel", {
 				Size = UDim2.fromOffset(16, 16),
 				Position = UDim2.new(0, 8, 0.5, -8),
 				BackgroundTransparency = 1,
 				Image = iconAsset,
 				ImageColor3 = Library.Theme.TextDim,
-				ZIndex = 12,
+				ZIndex = 13,
 				Parent = tabBtnInner,
 			})
 		end
@@ -832,9 +903,10 @@ function Library:CreateWindow(cfg)
 			TextColor3 = Library.Theme.TextDim,
 			Text = string.upper(tabName or "TAB"),
 			TextXAlignment = Enum.TextXAlignment.Left,
-			ZIndex = 12,
+			ZIndex = 13,
 			Parent = tabBtnInner,
 		})
+		Util.RegisterTheme(tabLabel, "TextColor3", "FontColor")
 
 		local tabPage = New("Frame", {
 			Size = UDim2.fromScale(1, 1),
@@ -984,7 +1056,18 @@ function Library:CreateWindow(cfg)
 			leftCol.Visible = false
 			rightCol.Visible = false
 
-			local subBtnOuter, subBtnInner = Util.CreateHardBorder(self.SubTabBar, UDim2.fromOffset(75, 20), nil, Library.Theme.ControlTop, Library.Theme.ControlBottom)
+			local subBtnOuter, subBtnInner = Util.CreateHardBorder(self.SubTabBar, UDim2.fromOffset(80, 22), nil, Library.Theme.ControlTop, Library.Theme.ControlBottom)
+
+			local subLine = New("Frame", {
+				Size = UDim2.new(1, 0, 0, 2),
+				Position = UDim2.new(0, 0, 1, -2),
+				BackgroundColor3 = Library.Theme.Accent1,
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				ZIndex = 14,
+				Parent = subBtnInner,
+			})
+			Util.RegisterTheme(subLine, "BackgroundColor3", "AccentColor")
 
 			local subLabel = New("TextLabel", {
 				Size = UDim2.fromScale(1, 1),
@@ -993,6 +1076,7 @@ function Library:CreateWindow(cfg)
 				TextSize = Library.Theme.FontSize - 1,
 				TextColor3 = Library.Theme.TextDim,
 				Text = string.upper(subTabName or "SUBTAB"),
+				ZIndex = 13,
 				Parent = subBtnInner,
 			})
 
@@ -1000,6 +1084,7 @@ function Library:CreateWindow(cfg)
 				Btn = subBtnOuter,
 				Inner = subBtnInner,
 				Label = subLabel,
+				Line = subLine,
 				Left = subLeftCol,
 				Right = subRightCol,
 			}
@@ -1009,16 +1094,23 @@ function Library:CreateWindow(cfg)
 					other.Left.Visible = false
 					other.Right.Visible = false
 					Util.Tween(other.Label, 0.12, { TextColor3 = Library.Theme.TextDim })
+					Util.Tween(other.Line, 0.12, { BackgroundTransparency = 1 })
 					Util.Tween(other.Inner, 0.12, { BackgroundColor3 = Library.Theme.ControlTop })
 				end
+				SubTab.Left.Position = UDim2.fromOffset(0, 32)
+				SubTab.Right.Position = UDim2.new(0.5, 6, 0, 32)
 				SubTab.Left.Visible = true
 				SubTab.Right.Visible = true
-				Util.Tween(subLabel, 0.12, { TextColor3 = Library.Theme.Accent1 })
-				Util.Tween(subBtnInner, 0.12, { BackgroundColor3 = Library.Theme.GroupTop })
+				Util.Tween(subLabel, 0.14, { TextColor3 = Library.Theme.Accent1 })
+				Util.Tween(subLine, 0.14, { BackgroundTransparency = 0 })
+				Util.Tween(subBtnInner, 0.14, { BackgroundColor3 = Library.Theme.GroupTop })
+				Util.Tween(SubTab.Left, 0.16, { Position = UDim2.fromOffset(0, 28) }, Enum.EasingStyle.Quart)
+				Util.Tween(SubTab.Right, 0.16, { Position = UDim2.new(0.5, 6, 0, 28) }, Enum.EasingStyle.Quart)
 			end
 
 			subBtnInner.InputBegan:Connect(function(input)
 				if input.UserInputType == Enum.UserInputType.MouseButton1 then
+					Util.PlaySound("click")
 					selectSubTab()
 				end
 			end)
@@ -1040,14 +1132,18 @@ function Library:CreateWindow(cfg)
 		local function selectTab()
 			for _, other in ipairs(Window.Tabs) do
 				other.Page.Visible = false
-				other.Glow.Visible = false
+				Util.Tween(other.Pill, 0.12, { Size = UDim2.new(0, 3, 0, 0) })
 				Util.Tween(other.Label, 0.15, { TextColor3 = Library.Theme.TextDim })
+				if other.Icon then Util.Tween(other.Icon, 0.15, { ImageColor3 = Library.Theme.TextDim }) end
 				Util.Tween(other.Inner, 0.15, { BackgroundColor3 = Library.Theme.ControlTop })
 			end
+			tabPage.Position = UDim2.fromOffset(0, 6)
 			tabPage.Visible = true
-			tabGlow.Visible = true
-			Util.Tween(tabLabel, 0.15, { TextColor3 = Library.Theme.Text })
-			Util.Tween(tabBtnInner, 0.15, { BackgroundColor3 = Library.Theme.GroupTop })
+			Util.Tween(activePill, 0.18, { Size = UDim2.new(0, 3, 0.65, 0) }, Enum.EasingStyle.Quart)
+			Util.Tween(tabLabel, 0.18, { TextColor3 = Library.Theme.Text })
+			if tabIcon then Util.Tween(tabIcon, 0.18, { ImageColor3 = Library.Theme.Accent1 }) end
+			Util.Tween(tabBtnInner, 0.18, { BackgroundColor3 = Library.Theme.GroupTop })
+			Util.Tween(tabPage, 0.18, { Position = UDim2.fromOffset(0, 0) }, Enum.EasingStyle.Quart)
 		end
 
 		tabBtnInner.InputBegan:Connect(function(input)
@@ -1059,10 +1155,6 @@ function Library:CreateWindow(cfg)
 
 		tabBtnInner.MouseEnter:Connect(function()
 			Util.PlaySound("hover")
-		end)
-
-		-- Tab hover tint for inactive tabs
-		tabBtnInner.MouseEnter:Connect(function()
 			if not tabPage.Visible then
 				Util.Tween(tabBtnInner, 0.1, { BackgroundColor3 = Library.Theme.ControlHover })
 			end
@@ -1073,10 +1165,11 @@ function Library:CreateWindow(cfg)
 			end
 		end)
 
-		Tab.Btn = tabBtnOuter
+		Tab.Btn   = tabBtnOuter
 		Tab.Inner = tabBtnInner
 		Tab.Label = tabLabel
-		Tab.Glow = tabGlow
+		Tab.Icon  = tabIcon
+		Tab.Pill  = activePill
 		table.insert(Window.Tabs, Tab)
 
 		if #Window.Tabs == 1 then selectTab() end
@@ -1589,33 +1682,43 @@ function Library:CreateWindow(cfg)
 				})
 				Util.RegisterTheme(hoverBg, "BackgroundColor3", "AccentColor")
 
-				local boxOuter, boxInner = Util.CreateHardBorder(row, UDim2.fromOffset(13, 13), UDim2.fromOffset(0, 2), Library.Theme.ControlTop, Library.Theme.ControlBottom)
+				local boxOuter, boxInner = Util.CreateHardBorder(row, UDim2.fromOffset(14, 14), UDim2.fromOffset(0, 2), Library.Theme.ControlTop, Library.Theme.ControlBottom)
 
 				local fill = New("Frame", {
 					Size = UDim2.fromScale(1, 1),
 					BackgroundColor3 = Library.Theme.Accent1,
 					BorderSizePixel = 0,
 					BackgroundTransparency = state and 0 or 1,
+					ZIndex = boxInner.ZIndex + 1,
 					Parent = boxInner,
 				})
 				Util.RegisterTheme(fill, "BackgroundColor3", "AccentColor")
 
-				-- Checkmark glyph that pops in when toggled on
-				local checkMark = New("TextLabel", {
-					Size = UDim2.fromScale(1, 1),
+				New("UIGradient", {
+					Rotation = 90,
+					Color = ColorSequence.new({
+						ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 255, 255)),
+						ColorSequenceKeypoint.new(1.0, Color3.fromRGB(195, 195, 195)),
+					}),
+					Parent = fill,
+				})
+
+				-- Crisp anti-aliased vector Lucide checkmark icon with smooth bounce
+				local checkIcon = New("ImageLabel", {
+					Size = state and UDim2.fromOffset(10, 10) or UDim2.fromOffset(0, 0),
+					AnchorPoint = Vector2.new(0.5, 0.5),
+					Position = UDim2.fromScale(0.5, 0.5),
 					BackgroundTransparency = 1,
-					Font = Library.Theme.FontBold,
-					TextSize = 9,
-					TextColor3 = Color3.fromRGB(14, 14, 17),
-					Text = "✓",
-					Visible = state,
+					Image = Library.Icons.Check,
+					ImageColor3 = Color3.fromRGB(16, 16, 20),
+					ImageTransparency = state and 0 or 1,
 					ZIndex = boxInner.ZIndex + 2,
 					Parent = boxInner,
 				})
 
 				local label = New("TextLabel", {
-					Size = UDim2.new(1, -20, 1, 0),
-					Position = UDim2.fromOffset(20, 0),
+					Size = UDim2.new(1, -22, 1, 0),
+					Position = UDim2.fromOffset(22, 0),
 					BackgroundTransparency = 1,
 					Font = Library.Theme.Font,
 					TextSize = Library.Theme.FontSize,
@@ -1647,9 +1750,21 @@ function Library:CreateWindow(cfg)
 				local function setToggle(val)
 					Toggle.Value = val
 					Library.Flags[flag] = val
-					Util.Tween(fill, 0.14, { BackgroundTransparency = val and 0 or 1 })
-					checkMark.Visible = val
-					Util.Tween(label, 0.14, { TextColor3 = val and Library.Theme.Text or Library.Theme.TextDim })
+
+					if val then
+						Util.Tween(fill, 0.14, { BackgroundTransparency = 0 })
+						checkIcon.ImageTransparency = 0
+						checkIcon.Size = UDim2.fromOffset(4, 4)
+						Util.Tween(checkIcon, 0.18, { Size = UDim2.fromOffset(10, 10) }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+						Util.Tween(label, 0.14, { TextColor3 = Library.Theme.Text })
+						Util.Tween(boxInner, 0.14, { BackgroundColor3 = Library.Theme.ControlHover })
+					else
+						Util.Tween(fill, 0.12, { BackgroundTransparency = 1 })
+						Util.Tween(checkIcon, 0.12, { Size = UDim2.fromOffset(0, 0), ImageTransparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+						Util.Tween(label, 0.14, { TextColor3 = Library.Theme.TextDim })
+						Util.Tween(boxInner, 0.14, { BackgroundColor3 = Library.Theme.ControlTop })
+					end
+
 					Util.PlaySound("toggle")
 					callback(val)
 				end
@@ -1662,11 +1777,17 @@ function Library:CreateWindow(cfg)
 					Parent = row,
 				})
 				clickBtn.MouseEnter:Connect(function()
-					Util.Tween(hoverBg, 0.12, { BackgroundTransparency = 0.91 })
+					Util.Tween(hoverBg, 0.12, { BackgroundTransparency = 0.93 })
+					if not Toggle.Value then
+						Util.Tween(boxInner, 0.1, { BackgroundColor3 = Library.Theme.ControlHover })
+					end
 					Util.PlaySound("hover")
 				end)
 				clickBtn.MouseLeave:Connect(function()
 					Util.Tween(hoverBg, 0.12, { BackgroundTransparency = 1 })
+					if not Toggle.Value then
+						Util.Tween(boxInner, 0.1, { BackgroundColor3 = Library.Theme.ControlTop })
+					end
 				end)
 				clickBtn.MouseButton1Click:Connect(function()
 					Util.PlaySound("click")
@@ -1763,7 +1884,7 @@ function Library:CreateWindow(cfg)
 				end)
 			end
 
-			-- SLIDER
+			-- SLIDER (Smooth animations + Floating tooltip + Direct manual number input)
 			function Group:AddSlider(sCfg)
 				sCfg = sCfg or {}
 				local sText  = sCfg.Text or "Slider"
@@ -1775,7 +1896,7 @@ function Library:CreateWindow(cfg)
 				local cb     = sCfg.Callback or function() end
 
 				local row = New("Frame", {
-					Size = UDim2.new(1, 0, 0, 30),
+					Size = UDim2.new(1, 0, 0, 32),
 					BackgroundTransparency = 1,
 					Parent = elemList,
 				})
@@ -1788,7 +1909,7 @@ function Library:CreateWindow(cfg)
 				})
 
 				local label = New("TextLabel", {
-					Size = UDim2.new(0.7, 0, 0, 14),
+					Size = UDim2.new(0.65, 0, 0, 14),
 					BackgroundTransparency = 1,
 					Font = Library.Theme.Font,
 					TextSize = Library.Theme.FontSize,
@@ -1800,14 +1921,28 @@ function Library:CreateWindow(cfg)
 				Util.RegisterTheme(label, "TextColor3", "FontColor")
 
 				local valLabel = New("TextLabel", {
-					Size = UDim2.new(0.3, 0, 0, 14),
-					Position = UDim2.new(0.7, 0, 0, 0),
+					Size = UDim2.new(0.35, 0, 0, 14),
+					Position = UDim2.new(0.65, 0, 0, 0),
 					BackgroundTransparency = 1,
 					Font = Library.Theme.Font,
 					TextSize = Library.Theme.FontSize,
 					TextColor3 = Library.Theme.TextDim,
 					TextXAlignment = Enum.TextXAlignment.Right,
 					Text = tostring(curVal) .. suffix,
+					Parent = row,
+				})
+
+				-- Direct manual typing box on clicking valLabel
+				local manualInput = New("TextBox", {
+					Size = UDim2.new(0.35, 0, 0, 14),
+					Position = UDim2.new(0.65, 0, 0, 0),
+					BackgroundTransparency = 1,
+					Font = Library.Theme.FontBold,
+					TextSize = Library.Theme.FontSize,
+					TextColor3 = Library.Theme.Accent1,
+					TextXAlignment = Enum.TextXAlignment.Right,
+					ClearTextOnFocus = true,
+					Visible = false,
 					Parent = row,
 				})
 
@@ -1822,14 +1957,49 @@ function Library:CreateWindow(cfg)
 				})
 				Util.RegisterTheme(fill, "BackgroundColor3", "AccentColor")
 
-				-- Slider thumb knob at the current fill edge
+				New("UIGradient", {
+					Rotation = 90,
+					Color = ColorSequence.new({
+						ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 255, 255)),
+						ColorSequenceKeypoint.new(1.0, Color3.fromRGB(180, 180, 180)),
+					}),
+					Parent = fill,
+				})
+
+				-- Floating value tooltip badge
+				local tooltip = New("Frame", {
+					Size = UDim2.fromOffset(36, 16),
+					AnchorPoint = Vector2.new(0.5, 1),
+					Position = UDim2.new(pct, 0, 0, -3),
+					BackgroundColor3 = Library.Theme.MainTop,
+					BorderSizePixel = 1,
+					BorderColor3 = Library.Theme.OuterBorder,
+					BackgroundTransparency = 1,
+					ZIndex = 25,
+					Visible = false,
+					Parent = trackInner,
+				})
+				local tooltipText = New("TextLabel", {
+					Size = UDim2.fromScale(1, 1),
+					BackgroundTransparency = 1,
+					Font = Library.Theme.FontBold,
+					TextSize = Library.Theme.FontSize - 2,
+					TextColor3 = Library.Theme.Accent1,
+					Text = tostring(curVal),
+					ZIndex = 26,
+					Parent = tooltip,
+				})
+				Util.RegisterTheme(tooltipText, "TextColor3", "AccentColor")
+
+				-- Slider thumb knob with smooth hover glow
 				local thumb = New("Frame", {
-					Size = UDim2.fromOffset(3, 12),
-					AnchorPoint = Vector2.new(1, 0.5),
+					Size = UDim2.fromOffset(4, 12),
+					AnchorPoint = Vector2.new(0.5, 0.5),
 					Position = UDim2.new(pct, 0, 0.5, 0),
-					BackgroundColor3 = Color3.fromRGB(235, 235, 240),
-					BorderSizePixel = 0,
-					ZIndex = trackInner.ZIndex + 2,
+					BackgroundColor3 = Color3.fromRGB(240, 240, 245),
+					BorderSizePixel = 1,
+					BorderColor3 = Library.Theme.OuterBorder,
+					ZIndex = trackInner.ZIndex + 3,
 					Parent = trackInner,
 				})
 
@@ -1840,10 +2010,37 @@ function Library:CreateWindow(cfg)
 					curVal = val
 					Library.Flags[flag] = val
 					valLabel.Text = tostring(val) .. suffix
-					Util.Tween(fill, 0.05, { Size = UDim2.new(x, 0, 1, 0) })
-					Util.Tween(thumb, 0.05, { Position = UDim2.new(x, 0, 0.5, 0) })
+					tooltipText.Text = tostring(val)
+					Util.Tween(fill, 0.04, { Size = UDim2.new(x, 0, 1, 0) })
+					Util.Tween(thumb, 0.04, { Position = UDim2.new(x, 0, 0.5, 0) })
+					Util.Tween(tooltip, 0.04, { Position = UDim2.new(x, 0, 0, -3) })
 					cb(val)
 				end
+
+				valLabel.InputBegan:Connect(function(input)
+					if input.UserInputType == Enum.UserInputType.MouseButton1 then
+						valLabel.Visible = false
+						manualInput.Visible = true
+						manualInput.Text = tostring(curVal)
+						manualInput:CaptureFocus()
+					end
+				end)
+
+				manualInput.FocusLost:Connect(function()
+					local num = tonumber(manualInput.Text)
+					if num then
+						num = math.clamp(math.floor(num), min, max)
+						curVal = num
+						Library.Flags[flag] = num
+						local newPct = (num - min) / (max - min)
+						valLabel.Text = tostring(num) .. suffix
+						Util.Tween(fill, 0.12, { Size = UDim2.new(newPct, 0, 1, 0) })
+						Util.Tween(thumb, 0.12, { Position = UDim2.new(newPct, 0, 0.5, 0) })
+						cb(num)
+					end
+					manualInput.Visible = false
+					valLabel.Visible = true
+				end)
 
 				local trackBtn = New("TextButton", {
 					Size = UDim2.fromScale(1, 1),
@@ -1852,8 +2049,27 @@ function Library:CreateWindow(cfg)
 					Parent = trackOuter,
 				})
 
+				trackBtn.MouseEnter:Connect(function()
+					Util.Tween(thumb, 0.12, { Size = UDim2.fromOffset(6, 14), BackgroundColor3 = Library.Theme.Accent1 })
+					tooltip.Visible = true
+					Util.Tween(tooltip, 0.12, { BackgroundTransparency = 0 })
+					Util.PlaySound("hover")
+				end)
+
+				trackBtn.MouseLeave:Connect(function()
+					if not dragging then
+						Util.Tween(thumb, 0.12, { Size = UDim2.fromOffset(4, 12), BackgroundColor3 = Color3.fromRGB(240, 240, 245) })
+						local out = Util.Tween(tooltip, 0.12, { BackgroundTransparency = 1 })
+						out.Completed:Connect(function() if not dragging then tooltip.Visible = false end end)
+					end
+				end)
+
 				trackBtn.MouseButton1Down:Connect(function()
 					dragging = true
+					Util.PlaySound("click")
+					tooltip.Visible = true
+					Util.Tween(tooltip, 0.1, { BackgroundTransparency = 0 })
+					Util.Tween(thumb, 0.1, { Size = UDim2.fromOffset(6, 14), BackgroundColor3 = Library.Theme.Accent1 })
 					local mouse = UserInputService:GetMouseLocation()
 					updateSlider(mouse.X)
 				end)
@@ -1865,7 +2081,12 @@ function Library:CreateWindow(cfg)
 				end)
 
 				UserInputService.InputEnded:Connect(function(input)
-					if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+					if input.UserInputType == Enum.UserInputType.MouseButton1 and dragging then
+						dragging = false
+						Util.Tween(thumb, 0.12, { Size = UDim2.fromOffset(4, 12), BackgroundColor3 = Color3.fromRGB(240, 240, 245) })
+						local out = Util.Tween(tooltip, 0.14, { BackgroundTransparency = 1 })
+						out.Completed:Connect(function() if not dragging then tooltip.Visible = false end end)
+					end
 				end)
 
 				local Slider = { Value = curVal }
@@ -1874,8 +2095,10 @@ function Library:CreateWindow(cfg)
 					curVal = v
 					local pctNew = (v - min) / (max - min)
 					valLabel.Text = tostring(v) .. suffix
+					tooltipText.Text = tostring(v)
 					Util.Tween(fill, 0.1, { Size = UDim2.new(pctNew, 0, 1, 0) })
 					Util.Tween(thumb, 0.1, { Position = UDim2.new(pctNew, 0, 0.5, 0) })
+					Util.Tween(tooltip, 0.1, { Position = UDim2.new(pctNew, 0, 0, -3) })
 					cb(v)
 				end
 				function Slider:Get() return curVal end
@@ -2041,7 +2264,7 @@ function Library:CreateWindow(cfg)
 						})
 					else
 						for _, item in ipairs(list) do
-							local isSelected = isMulti and multiSelected[item] or (curVal == item)
+							local isSelected = isMulti and (multiSelected[item] == true) or (curVal == item)
 							local itemBtn = New("TextButton", {
 								Size = UDim2.new(1, 0, 0, 22),
 								BackgroundTransparency = 1,
@@ -2050,11 +2273,27 @@ function Library:CreateWindow(cfg)
 								Font = Library.Theme.Font,
 								TextSize = Library.Theme.FontSize,
 								TextXAlignment = Enum.TextXAlignment.Left,
-								Text = "  " .. tostring(item),
+								Text = "   " .. tostring(item),
 								TextColor3 = isSelected and Library.Theme.Accent1 or Library.Theme.TextDim,
 								ZIndex = 9997,
 								Parent = scroll,
 							})
+
+							local itemCheck = nil
+							if isMulti then
+								itemCheck = New("ImageLabel", {
+									Size = isSelected and UDim2.fromOffset(10, 10) or UDim2.fromOffset(0, 0),
+									Position = UDim2.new(1, -16, 0.5, 0),
+									AnchorPoint = Vector2.new(0.5, 0.5),
+									BackgroundTransparency = 1,
+									Image = Library.Icons.Check,
+									ImageColor3 = Library.Theme.Accent1,
+									ImageTransparency = isSelected and 0 or 1,
+									ZIndex = 9998,
+									Parent = itemBtn,
+								})
+								Util.RegisterTheme(itemCheck, "ImageColor3", "AccentColor")
+							end
 
 							itemBtn.MouseEnter:Connect(function()
 								Util.Tween(itemBtn, 0.08, { BackgroundTransparency = 0 })
@@ -2066,7 +2305,17 @@ function Library:CreateWindow(cfg)
 							itemBtn.MouseButton1Click:Connect(function()
 								if isMulti then
 									multiSelected[item] = not multiSelected[item]
-									itemBtn.TextColor3 = multiSelected[item] and Library.Theme.Accent1 or Library.Theme.TextDim
+									local sel = multiSelected[item]
+									Util.Tween(itemBtn, 0.12, { TextColor3 = sel and Library.Theme.Accent1 or Library.Theme.TextDim })
+									if itemCheck then
+										if sel then
+											itemCheck.ImageTransparency = 0
+											itemCheck.Size = UDim2.fromOffset(4, 4)
+											Util.Tween(itemCheck, 0.15, { Size = UDim2.fromOffset(10, 10) }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+										else
+											Util.Tween(itemCheck, 0.1, { Size = UDim2.fromOffset(0, 0), ImageTransparency = 1 })
+										end
+									end
 									currentLabel.Text = getDisplayString()
 									Library.Flags[flag] = multiSelected
 									cb(multiSelected)
@@ -2081,7 +2330,7 @@ function Library:CreateWindow(cfg)
 						end
 					end
 
-					Util.Tween(pOuter, 0.15, { Size = UDim2.fromOffset(absSize.X, listH + 4) })
+					Util.Tween(pOuter, 0.16, { Size = UDim2.fromOffset(absSize.X, listH + 4) }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 				end
 
 				local clickBtn = New("TextButton", {
@@ -2138,17 +2387,18 @@ function Library:CreateWindow(cfg)
 				return Dropdown
 			end
 
-			-- BUTTON
+			-- BUTTON (Icon support + Press compression + Ripple sweep + Sound)
 			function Group:AddButton(bCfg)
 				bCfg = bCfg or {}
 				local bText   = bCfg.Text or "Button"
 				local isRisky = bCfg.Risky or false
+				local iconId  = bCfg.Icon
 				local cb      = bCfg.Callback or function() end
 
 				local topCol = isRisky and Library.Theme.Risky or Library.Theme.ControlTop
 				local botCol = isRisky and Library.Theme.RiskyDark or Library.Theme.ControlBottom
 
-				local btnOuter, btnInner = Util.CreateHardBorder(elemList, UDim2.new(1, 0, 0, 22), nil, topCol, botCol)
+				local btnOuter, btnInner = Util.CreateHardBorder(elemList, UDim2.new(1, 0, 0, 24), nil, topCol, botCol)
 
 				-- Register for search
 				table.insert(Library.SearchableControls, {
@@ -2157,13 +2407,31 @@ function Library:CreateWindow(cfg)
 					Type = "Button"
 				})
 
+				local hasIcon = (iconId ~= nil and typeof(iconId) == "string")
+				if hasIcon then
+					local bIcon = New("ImageLabel", {
+						Size = UDim2.fromOffset(13, 13),
+						Position = UDim2.new(0, 8, 0.5, -6),
+						BackgroundTransparency = 1,
+						Image = iconId,
+						ImageColor3 = isRisky and Color3.fromRGB(255, 255, 255) or Library.Theme.Accent1,
+						ZIndex = btnInner.ZIndex + 2,
+						Parent = btnInner,
+					})
+					if not isRisky then
+						Util.RegisterTheme(bIcon, "ImageColor3", "AccentColor")
+					end
+				end
+
 				local btnLabel = New("TextLabel", {
-					Size = UDim2.fromScale(1, 1),
+					Size = UDim2.new(1, hasIcon and -24 or 0, 1, 0),
+					Position = UDim2.fromOffset(hasIcon and 24 or 0, 0),
 					BackgroundTransparency = 1,
 					Font = Library.Theme.FontBold,
 					TextSize = Library.Theme.FontSize,
 					TextColor3 = Library.Theme.Text,
 					Text = bText,
+					ZIndex = btnInner.ZIndex + 2,
 					Parent = btnInner,
 				})
 				Util.RegisterTheme(btnLabel, "TextColor3", "FontColor")
@@ -2172,19 +2440,29 @@ function Library:CreateWindow(cfg)
 					Size = UDim2.fromScale(1, 1),
 					BackgroundTransparency = 1,
 					Text = "",
+					ZIndex = btnInner.ZIndex + 4,
 					Parent = btnOuter,
 				})
 
 				clickBtn.MouseEnter:Connect(function()
 					Util.Tween(btnInner, 0.1, { BackgroundColor3 = isRisky and Library.Theme.Risky or Library.Theme.ControlHover })
+					Util.PlaySound("hover")
 				end)
 				clickBtn.MouseLeave:Connect(function()
 					Util.Tween(btnInner, 0.1, { BackgroundColor3 = topCol })
 				end)
+				clickBtn.MouseButton1Down:Connect(function()
+					Util.Tween(btnInner, 0.06, { Size = UDim2.new(1, -4, 1, -2), Position = UDim2.fromOffset(2, 1) })
+				end)
+				clickBtn.MouseButton1Up:Connect(function()
+					Util.Tween(btnInner, 0.1, { Size = UDim2.new(1, -2, 1, -2), Position = UDim2.fromOffset(1, 1) })
+				end)
 				clickBtn.MouseButton1Click:Connect(function()
+					Util.PlaySound("click")
 					-- Color flash
 					Util.Tween(btnInner, 0.04, { BackgroundColor3 = Library.Theme.Accent1 })
 					task.delay(0.08, function() Util.Tween(btnInner, 0.14, { BackgroundColor3 = topCol }) end)
+
 					-- Ripple sweep left → right
 					local ripple = New("Frame", {
 						Size = UDim2.new(0, 0, 1, 0),
@@ -2192,7 +2470,7 @@ function Library:CreateWindow(cfg)
 						BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 						BackgroundTransparency = 0.5,
 						BorderSizePixel = 0,
-						ZIndex = btnInner.ZIndex + 1,
+						ZIndex = btnInner.ZIndex + 3,
 						Parent = btnInner,
 					})
 					New("UIGradient", {
@@ -2204,7 +2482,7 @@ function Library:CreateWindow(cfg)
 						}),
 						Parent = ripple,
 					})
-					local sweep = Util.Tween(ripple, 0.32, { Size = UDim2.new(1.6, 0, 1, 0), BackgroundTransparency = 1 }, Enum.EasingStyle.Quad)
+					local sweep = Util.Tween(ripple, 0.3, { Size = UDim2.new(1.6, 0, 1, 0), BackgroundTransparency = 1 }, Enum.EasingStyle.Quad)
 					sweep.Completed:Connect(function() if ripple.Parent then ripple:Destroy() end end)
 					cb()
 				end)
