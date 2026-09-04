@@ -241,9 +241,10 @@ function Util.AddSkeetGradientBar(parent, height)
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 		BorderSizePixel = 0,
 		ZIndex = 10,
-		ClipsDescendants = true,
+		ClipsDescendants = false,
 		Parent = parent,
 	})
+	New("UICorner", { CornerRadius = UDim.new(0, height or 2), Parent = bar })
 
 	local grad = New("UIGradient", {
 		Rotation = 0,
@@ -254,6 +255,15 @@ function Util.AddSkeetGradientBar(parent, height)
 			ColorSequenceKeypoint.new(0.60, Color3.fromRGB(247, 184, 92)),
 			ColorSequenceKeypoint.new(0.80, Color3.fromRGB(247, 104, 181)),
 			ColorSequenceKeypoint.new(1.00, Color3.fromRGB(184, 119, 247)),
+		}),
+		Parent = bar,
+	})
+	New("UIGradient", {
+		Rotation = 0,
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.3),
+			NumberSequenceKeypoint.new(0.5, 0),
+			NumberSequenceKeypoint.new(1, 0.3),
 		}),
 		Parent = bar,
 	})
@@ -605,6 +615,7 @@ function Library:CreateWindow(cfg)
 		Parent = animBg,
 	})
 	Util.RegisterTheme(accentOverlay, "BackgroundColor3", "AccentColor")
+	New("UICorner", { CornerRadius = UDim.new(0, 8), Parent = accentOverlay })
 	New("UIGradient", {
 		Rotation = 45,
 		Transparency = NumberSequence.new({
@@ -614,17 +625,6 @@ function Library:CreateWindow(cfg)
 		}),
 		Parent = accentOverlay,
 	})
-
-	local accentOverlay = New("Frame", {
-		Size = UDim2.new(0.6, 0, 0.6, 0),
-		Position = UDim2.fromScale(0.2, 0.2),
-		BackgroundColor3 = Library.Theme.Accent1,
-		BackgroundTransparency = 0.97,
-		BorderSizePixel = 0,
-		ZIndex = 2,
-		Parent = animBg,
-	})
-	Util.RegisterTheme(accentOverlay, "BackgroundColor3", "AccentColor")
 
 	Util.AddSkeetGradientBar(winInner, 3)
 	local sidebar = New("Frame", {
@@ -663,6 +663,7 @@ function Library:CreateWindow(cfg)
 		ZIndex = 10,
 		Parent = sidebar,
 	})
+	New("UICorner", { CornerRadius = UDim.new(0, 8), Parent = sidebarAccentGlow })
 	Util.RegisterTheme(sidebarAccentGlow, "BackgroundColor3", "AccentColor")
 	New("UIGradient", {
 		Rotation = 90,
@@ -912,6 +913,7 @@ function Library:CreateWindow(cfg)
 		ZIndex = 9,
 		Parent = contentHolder,
 	})
+	New("UICorner", { CornerRadius = UDim.new(0, 10), Parent = contentAccentGlow })
 	Util.RegisterTheme(contentAccentGlow, "BackgroundColor3", "AccentColor")
 	New("UIGradient", {
 		Rotation = 135,
