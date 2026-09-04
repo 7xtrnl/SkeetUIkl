@@ -258,35 +258,6 @@ function Util.AddSkeetGradientBar(parent, height)
 		Parent = bar,
 	})
 
-	-- Animated shimmer sweep that loops across the gradient bar
-	local shimmer = New("Frame", {
-		Size = UDim2.new(0.32, 0, 1, 0),
-		Position = UDim2.fromScale(-0.32, 0),
-		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-		BackgroundTransparency = 0.62,
-		BorderSizePixel = 0,
-		ZIndex = 11,
-		Parent = bar,
-	})
-	New("UIGradient", {
-		Rotation = 0,
-		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 1),
-			NumberSequenceKeypoint.new(0.5, 0.28),
-			NumberSequenceKeypoint.new(1, 1),
-		}),
-		Parent = shimmer,
-	})
-	task.spawn(function()
-		while shimmer.Parent do
-			shimmer.Position = UDim2.fromScale(-0.32, 0)
-			task.wait(1.0)
-			if not shimmer.Parent then break end
-			Util.Tween(shimmer, 1.1, { Position = UDim2.fromScale(1.32, 0) }, Enum.EasingStyle.Sine)
-			task.wait(2.4)
-		end
-	end)
-
 	return bar
 end
 
@@ -644,49 +615,18 @@ function Library:CreateWindow(cfg)
 		Parent = accentOverlay,
 	})
 
-	-- Enhanced shimmer with multiple layers
-	local bgShimmer = New("Frame", {
-		Size = UDim2.new(0.2, 0, 1, 0),
-		Position = UDim2.fromScale(-0.2, 0),
-		BackgroundColor3 = Color3.fromRGB(168, 219, 95),
-		BackgroundTransparency = 0.88,
+	local accentOverlay = New("Frame", {
+		Size = UDim2.new(0.6, 0, 0.6, 0),
+		Position = UDim2.fromScale(0.2, 0.2),
+		BackgroundColor3 = Library.Theme.Accent1,
+		BackgroundTransparency = 0.97,
 		BorderSizePixel = 0,
-		ZIndex = 3,
+		ZIndex = 2,
 		Parent = animBg,
 	})
-	New("UIGradient", {
-		Rotation = 90,
-		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 1),
-			NumberSequenceKeypoint.new(0.35, 0.5),
-			NumberSequenceKeypoint.new(0.65, 0.5),
-			NumberSequenceKeypoint.new(1, 1),
-		}),
-		Parent = bgShimmer,
-	})
-	New("UIGradient", {
-		Rotation = 0,
-		Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Library.Theme.Accent1),
-			ColorSequenceKeypoint.new(0.5, Library.Theme.Accent2),
-			ColorSequenceKeypoint.new(1, Library.Theme.Accent1),
-		}),
-		Parent = bgShimmer,
-	})
-
-	task.spawn(function()
-		while bgShimmer.Parent do
-			bgShimmer.Position = UDim2.fromScale(-0.2, 0)
-			task.wait(2.5)
-			if not bgShimmer.Parent then break end
-			Util.Tween(bgShimmer, 3.5, { Position = UDim2.fromScale(1.2, 0) }, Enum.EasingStyle.Sine)
-			task.wait(3.5)
-		end
-	end)
+	Util.RegisterTheme(accentOverlay, "BackgroundColor3", "AccentColor")
 
 	Util.AddSkeetGradientBar(winInner, 3)
-
-	-- Sidebar with Skeetware branding
 	local sidebar = New("Frame", {
 		Size = UDim2.new(0, 140, 1, -6),
 		Position = UDim2.fromOffset(3, 3),
@@ -1909,7 +1849,6 @@ function Library:CreateWindow(cfg)
 					Parent = row,
 				})
 				Util.RegisterTheme(hoverBg, "BackgroundColor3", "AccentColor")
-				New("UICorner", { CornerRadius = UDim.new(0, 3), Parent = hoverBg })
 				New("UIGradient", {
 					Rotation = 90,
 					Transparency = NumberSequence.new({
@@ -1920,7 +1859,7 @@ function Library:CreateWindow(cfg)
 					Parent = hoverBg,
 				})
 
-				-- Modern rounded toggle switch (circle slider)
+				-- Flat toggle switch (no rounded corners)
 				local toggleTrack = New("Frame", {
 					Size = UDim2.fromOffset(32, 16),
 					Position = UDim2.fromOffset(0, 2),
@@ -1929,10 +1868,9 @@ function Library:CreateWindow(cfg)
 					ZIndex = 2,
 					Parent = row,
 				})
-				New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = toggleTrack })
 				Util.RegisterTheme(toggleTrack, "BackgroundColor3", state and "AccentColor" or "MainColor")
 
-				-- Gorgeous multi-layer gradient on track
+				-- Flat gradient on track
 				local trackGradient = New("UIGradient", {
 					Rotation = 135,
 					Color = ColorSequence.new({
@@ -1953,7 +1891,6 @@ function Library:CreateWindow(cfg)
 					ZIndex = 3,
 					Parent = toggleTrack,
 				})
-				New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = trackShadow })
 				New("UIGradient", {
 					Rotation = 90,
 					Transparency = NumberSequence.new({
@@ -1964,7 +1901,7 @@ function Library:CreateWindow(cfg)
 					Parent = trackShadow,
 				})
 
-				-- Sliding circle knob
+				-- Flat slider knob (no rounded corners)
 				local toggleKnob = New("Frame", {
 					Size = UDim2.fromOffset(12, 12),
 					Position = state and UDim2.fromOffset(18, 2) or UDim2.fromOffset(2, 2),
@@ -1973,7 +1910,6 @@ function Library:CreateWindow(cfg)
 					ZIndex = 5,
 					Parent = toggleTrack,
 				})
-				New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = toggleKnob })
 
 				-- Glossy gradient on knob for premium look
 				New("UIGradient", {
@@ -1996,7 +1932,6 @@ function Library:CreateWindow(cfg)
 					ZIndex = 4,
 					Parent = toggleKnob,
 				})
-				New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = knobGlow })
 				Util.RegisterTheme(knobGlow, "BackgroundColor3", "AccentColor")
 
 				local label = New("TextLabel", {
