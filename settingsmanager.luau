@@ -135,8 +135,9 @@ function SaveManager:Save(configName)
 	local data = {}
 	if SettingsManager.Library and SettingsManager.Library.Flags then
 		for flag, val in pairs(SettingsManager.Library.Flags) do
-			-- Exclude internal manager flags to prevent loops
-			if not flag:match("^__config_") and not flag:match("^__theme_") then
+			-- Exclude only built-in manager control flags; theme colors, the
+			-- menu keybind and HUD positions all persist across sessions now
+			if not flag:match("^__config_") then
 				data[flag] = encodeValue(val)
 			end
 		end
@@ -187,6 +188,22 @@ function SaveManager:Load(configName)
 				end)
 			elseif lib.Flags then
 				lib.Flags[flag] = val
+			end
+		end
+	end
+
+	-- Restore draggable HUD positions saved from the previous session
+	do
+		local lib = SettingsManager.Library
+		if lib then
+			local fp = lib.Flags
+			local wp = fp and fp["__wm_pos"]
+			if lib.Watermark and typeof(wp) == "table" and wp.X and wp.Y then
+				pcall(function() lib.Watermark.Position = UDim2.fromOffset(wp.X, wp.Y) end)
+			end
+			local kp = fp and fp["__kb_pos"]
+			if lib.KeybindListFrame and typeof(kp) == "table" and kp.X and kp.Y then
+				pcall(function() lib.KeybindListFrame.Position = UDim2.fromOffset(kp.X, kp.Y) end)
 			end
 		end
 	end
