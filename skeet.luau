@@ -602,35 +602,6 @@ function Library:CreateWindow(cfg)
 		Parent = animBg,
 	})
 
-	-- Soft circular bloom in the content area (reads as light, not a square)
-	local bloomClip = New("Frame", {
-		Size = UDim2.new(1, -143, 1, 0),
-		Position = UDim2.fromOffset(143, 0),
-		BackgroundTransparency = 1,
-		ClipsDescendants = true,
-		ZIndex = 2,
-		Parent = animBg,
-	})
-
-	local function makeBloom(sizePx, transparency)
-		local orb = New("Frame", {
-			Size = UDim2.fromOffset(sizePx, sizePx),
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.46),
-			BackgroundColor3 = Library.Theme.Accent1,
-			BackgroundTransparency = transparency,
-			BorderSizePixel = 0,
-			ZIndex = 2,
-			Parent = bloomClip,
-		})
-		New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = orb })
-		Util.RegisterTheme(orb, "BackgroundColor3", "AccentColor")
-		return orb
-	end
-	makeBloom(620, 0.965)
-	makeBloom(360, 0.955)
-	makeBloom(180, 0.94)
-
 	Util.AddSkeetGradientBar(winInner, 3)
 	local sidebar = New("Frame", {
 		Size = UDim2.new(0, 140, 1, -6),
@@ -643,51 +614,34 @@ function Library:CreateWindow(cfg)
 	})
 	Util.RegisterTheme(sidebar, "BackgroundColor3", "MainColor")
 
-	-- Rich multi-layer gradient on sidebar for premium depth
-	local sidebarGrad = New("UIGradient", {
+	-- Black sidebar with a light vertical fade (no orbs / rounded blobs)
+	New("UIGradient", {
 		Rotation = 90,
 		Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0.0, Color3.fromRGB(48, 48, 58)),
-			ColorSequenceKeypoint.new(0.1, Color3.fromRGB(42, 42, 50)),
-			ColorSequenceKeypoint.new(0.3, Color3.fromRGB(34, 34, 42)),
-			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(28, 28, 34)),
-			ColorSequenceKeypoint.new(0.7, Color3.fromRGB(24, 24, 30)),
-			ColorSequenceKeypoint.new(0.9, Color3.fromRGB(20, 20, 24)),
-			ColorSequenceKeypoint.new(1.0, Color3.fromRGB(16, 16, 19)),
+			ColorSequenceKeypoint.new(0.0, Color3.fromRGB(32, 32, 36)),
+			ColorSequenceKeypoint.new(0.35, Color3.fromRGB(24, 24, 28)),
+			ColorSequenceKeypoint.new(1.0, Color3.fromRGB(16, 16, 18)),
 		}),
 		Parent = sidebar,
 	})
 
-	-- Enhanced accent-tinted glow at top of sidebar
-	local sidebarAccentGlow = New("Frame", {
-		Size = UDim2.new(1, 0, 0, 120),
+	local sidebarFade = New("Frame", {
+		Size = UDim2.new(1, 0, 0, 72),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundColor3 = Library.Theme.Accent1,
-		BackgroundTransparency = 0.90,
+		BackgroundTransparency = 0.94,
 		BorderSizePixel = 0,
 		ZIndex = 10,
 		Parent = sidebar,
 	})
-	New("UICorner", { CornerRadius = UDim.new(0, 8), Parent = sidebarAccentGlow })
-	Util.RegisterTheme(sidebarAccentGlow, "BackgroundColor3", "AccentColor")
+	Util.RegisterTheme(sidebarFade, "BackgroundColor3", "AccentColor")
 	New("UIGradient", {
 		Rotation = 90,
 		Transparency = NumberSequence.new({
 			NumberSequenceKeypoint.new(0, 0),
-			NumberSequenceKeypoint.new(0.4, 0.5),
-			NumberSequenceKeypoint.new(0.7, 0.8),
 			NumberSequenceKeypoint.new(1, 1),
 		}),
-		Parent = sidebarAccentGlow,
-	})
-	New("UIGradient", {
-		Rotation = 135,
-		Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Library.Theme.Accent1),
-			ColorSequenceKeypoint.new(0.6, Library.Theme.Accent2),
-			ColorSequenceKeypoint.new(1, Library.Theme.Accent1),
-		}),
-		Parent = sidebarAccentGlow,
+		Parent = sidebarFade,
 	})
 
 	-- Sidebar right edge separator with gradient fade
@@ -1823,7 +1777,7 @@ function Library:CreateWindow(cfg)
 				return bindBtnOuter
 			end
 
-			-- TOGGLE (pill switch)
+			-- TOGGLE (hard-edged checkbox)
 			function Group:AddToggle(tCfg)
 				tCfg = tCfg or {}
 				local tText    = tCfg.Text or "Toggle"
@@ -1831,16 +1785,11 @@ function Library:CreateWindow(cfg)
 				local flag     = tCfg.Flag or tText
 				local callback = tCfg.Callback or function() end
 
-				local TRACK_W, TRACK_H = 34, 16
-				local KNOB = 12
-				local KNOB_PAD = 2
-				local knOff = UDim2.fromOffset(KNOB_PAD, KNOB_PAD)
-				local knOn  = UDim2.fromOffset(TRACK_W - KNOB - KNOB_PAD, KNOB_PAD)
-				local offTrack = Color3.fromRGB(38, 38, 46)
-				local offStroke = Color3.fromRGB(62, 62, 72)
+				local BOX = 14
+				local offFill = Color3.fromRGB(28, 28, 32)
 
 				local row = New("Frame", {
-					Size = UDim2.new(1, 0, 0, 20),
+					Size = UDim2.new(1, 0, 0, 18),
 					BackgroundTransparency = 1,
 					Parent = elemList,
 				})
@@ -1852,55 +1801,38 @@ function Library:CreateWindow(cfg)
 				})
 
 				local hoverBg = New("Frame", {
-					Size = UDim2.new(1, 6, 1, 2),
-					Position = UDim2.fromOffset(-3, -1),
+					Size = UDim2.new(1, 4, 1, 2),
+					Position = UDim2.fromOffset(-2, -1),
 					BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 					BackgroundTransparency = 1,
 					BorderSizePixel = 0,
 					ZIndex = 0,
 					Parent = row,
 				})
-				New("UICorner", { CornerRadius = UDim.new(0, 4), Parent = hoverBg })
 
-				local toggleTrack = New("Frame", {
-					Size = UDim2.fromOffset(TRACK_W, TRACK_H),
-					Position = UDim2.fromOffset(0, 2),
-					BackgroundColor3 = state and Library.Theme.Accent1 or offTrack,
+				local boxOuter, boxInner = Util.CreateHardBorder(
+					row,
+					UDim2.fromOffset(BOX, BOX),
+					UDim2.fromOffset(0, 2),
+					state and Library.Theme.Accent1 or offFill,
+					offFill
+				)
+				boxOuter.ZIndex = 2
+
+				local checkFill = New("Frame", {
+					Size = UDim2.new(1, -4, 1, -4),
+					Position = UDim2.fromOffset(2, 2),
+					BackgroundColor3 = Library.Theme.Accent1,
+					BackgroundTransparency = state and 0 or 1,
 					BorderSizePixel = 0,
-					ZIndex = 2,
-					Parent = row,
+					ZIndex = 3,
+					Parent = boxInner,
 				})
-				New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = toggleTrack })
-				if state then
-					Util.RegisterTheme(toggleTrack, "BackgroundColor3", "AccentColor")
-				end
-
-				local trackStroke = New("UIStroke", {
-					Color = state and Library.Theme.AccentDark or offStroke,
-					Thickness = 1,
-					Transparency = state and 0.35 or 0.15,
-					Parent = toggleTrack,
-				})
-
-				local toggleKnob = New("Frame", {
-					Size = UDim2.fromOffset(KNOB, KNOB),
-					Position = state and knOn or knOff,
-					BackgroundColor3 = Color3.fromRGB(248, 248, 252),
-					BorderSizePixel = 0,
-					ZIndex = 5,
-					Parent = toggleTrack,
-				})
-				New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = toggleKnob })
-				New("UIStroke", {
-					Color = Color3.fromRGB(0, 0, 0),
-					Thickness = 1,
-					Transparency = 0.72,
-					Parent = toggleKnob,
-				})
+				Util.RegisterTheme(checkFill, "BackgroundColor3", "AccentColor")
 
 				local label = New("TextLabel", {
-					Size = UDim2.new(1, -42, 1, 0),
-					Position = UDim2.fromOffset(40, 0),
+					Size = UDim2.new(1, -22, 1, 0),
+					Position = UDim2.fromOffset(20, 0),
 					BackgroundTransparency = 1,
 					Font = Library.Theme.Font,
 					TextSize = Library.Theme.FontSize,
@@ -1934,15 +1866,13 @@ function Library:CreateWindow(cfg)
 					Library.Flags[flag] = val
 
 					if val then
-						Util.Tween(toggleTrack, 0.16, { BackgroundColor3 = Library.Theme.Accent1 })
-						Util.Tween(trackStroke, 0.16, { Color = Library.Theme.AccentDark, Transparency = 0.35 })
-						Util.Tween(toggleKnob, 0.2, { Position = knOn }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-						Util.Tween(label, 0.14, { TextColor3 = Library.Theme.Text })
+						Util.Tween(boxInner, 0.1, { BackgroundColor3 = Library.Theme.Accent1 })
+						Util.Tween(checkFill, 0.1, { BackgroundTransparency = 0 })
+						Util.Tween(label, 0.1, { TextColor3 = Library.Theme.Text })
 					else
-						Util.Tween(toggleTrack, 0.16, { BackgroundColor3 = offTrack })
-						Util.Tween(trackStroke, 0.16, { Color = offStroke, Transparency = 0.15 })
-						Util.Tween(toggleKnob, 0.18, { Position = knOff }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-						Util.Tween(label, 0.14, { TextColor3 = Library.Theme.TextDim })
+						Util.Tween(boxInner, 0.1, { BackgroundColor3 = offFill })
+						Util.Tween(checkFill, 0.1, { BackgroundTransparency = 1 })
+						Util.Tween(label, 0.1, { TextColor3 = Library.Theme.TextDim })
 					end
 
 					Util.PlaySound("toggle")
