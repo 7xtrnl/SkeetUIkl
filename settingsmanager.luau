@@ -563,10 +563,10 @@ function ThemeManager:BuildThemeSection(groupbox)
 			lib:Notify({ Title = "Settings Manager", Text = "Settings manager opened!", Duration = 1 })
 			local sWindow = lib:CreateWindow({ Title = "Skeetware Settings", Size = UDim2.fromOffset(520, 420) })
 			SettingsManager._SettingsWindow = sWindow
-				local sTab = sWindow:AddTab("Settings", "⚙️")
-				local sGroup = sTab:AddGroupbox("Settings")
-				SaveManager:BuildConfigSection(sGroup)
-				ThemeManager:BuildThemeSection(sGroup)
+			local sTab = sWindow:AddTab("Settings", lib.Icons and lib.Icons.Settings or nil)
+			local sGroup = sTab:AddGroupbox({ Title = "Settings" })
+			SaveManager:BuildConfigSection(sGroup)
+			ThemeManager:BuildThemeSection(sGroup)
 		end,
 	})
 end
