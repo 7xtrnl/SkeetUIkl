@@ -94,6 +94,7 @@ local Library = {
 	ToggleKey = Enum.KeyCode.Insert,
 	Flags     = {},
 	Registry  = {},
+	FlagRegistry = {},
 	ThemeSignals = {},
 	KeybindList = nil,
 	Watermark   = nil,
@@ -101,6 +102,9 @@ local Library = {
 	SoundsEnabled = true,
 	SearchQuery = "",
 	SearchableControls = {},
+	Connections = {},
+	Unloaded = false,
+	OnUnload = nil,
 
 	Theme = {
 		Accent1       = Color3.fromRGB(168, 219, 95),  -- Skeet Green
@@ -179,6 +183,14 @@ function Util.RegisterTheme(inst, propName, themeKey)
 	return inst
 end
 
+-- Registers a component under its flag so SaveManager can push values back via :Set()
+function Util.RegisterFlag(flag, component)
+	if flag and component and component.Set then
+		Library.FlagRegistry[flag] = component
+	end
+	return component
+end
+
 function Util.Tween(inst, dur, props, style, dir)
 	local t = TweenService:Create(inst, TweenInfo.new(dur or 0.15, style or Enum.EasingStyle.Quart, dir or Enum.EasingDirection.Out), props)
 	t:Play()
@@ -202,6 +214,7 @@ function Util.CreateHardBorder(parent, size, pos, bgTop, bgBottom, isMainWin)
 		BorderSizePixel = 0,
 		Parent = outer,
 	})
+	Util.RegisterTheme(mid, "BackgroundColor3", "MidBorder")
 
 	local inner = New("Frame", {
 		Size = UDim2.new(1, -2, 1, -2),
@@ -349,7 +362,8 @@ function Library:CreateWatermark(customTitle)
 
 	local fpsCount = 0
 	local lastFpsUpdate = tick()
-	RunService.RenderStepped:Connect(function()
+	table.insert(Library.Connections, RunService.RenderStepped:Connect(function()
+		if Library.Unloaded or not wmLabel.Parent then return end
 		fpsCount = fpsCount + 1
 		if tick() - lastFpsUpdate >= 0.5 then
 			local fps = math.floor(fpsCount / (tick() - lastFpsUpdate))
@@ -358,7 +372,7 @@ function Library:CreateWatermark(customTitle)
 			fpsCount = 0
 			lastFpsUpdate = tick()
 		end
-	end)
+	end))
 
 	Library.Watermark = wmOuter
 	return wmOuter
@@ -778,7 +792,7 @@ function Library:CreateWindow(cfg)
 		Library.SearchQuery = string.lower(searchInput.Text)
 		for _, control in ipairs(Library.SearchableControls) do
 			if control.Row and control.SearchText then
-				local matches = string.find(control.SearchText, Library.SearchQuery) ~= nil
+				local matches = string.find(control.SearchText, Library.SearchQuery, 1, true) ~= nil
 				control.Row.Visible = matches or Library.SearchQuery == ""
 			end
 		end
@@ -817,7 +831,8 @@ function Library:CreateWindow(cfg)
 		end)
 	end
 
-	UserInputService.InputBegan:Connect(function(input, gp)
+	table.insert(Library.Connections, UserInputService.InputBegan:Connect(function(input, gp)
+		if Library.Unloaded then return end
 		if not gp and input.KeyCode == Library.ToggleKey then
 			Library.Open = not Library.Open
 			if Library.Open then
@@ -850,7 +865,7 @@ function Library:CreateWindow(cfg)
 				Util.PlaySound("close")
 			end
 		end
-	end)
+	end))
 
 	-- Single dedicated contentHolder strictly placed right of the sidebar
 	local contentHolder = New("Frame", {
@@ -1639,6 +1654,7 @@ function Library:CreateWindow(cfg)
 				}
 
 				if flag then Library.Flags[flag] = curColor end
+				Util.RegisterFlag(flag, Colorpicker)
 				return Colorpicker
 			end
 
@@ -1647,6 +1663,7 @@ function Library:CreateWindow(cfg)
 				local currentKey = defaultKey or Enum.KeyCode.E
 				local bindMode   = defaultMode or "Toggle"
 				local listening  = false
+				Library.Flags[flag] = { Key = currentKey, Type = bindMode }
 
 				local bindBtnOuter, bindBtnInner = Util.CreateHardBorder(parentHold, UDim2.fromOffset(48, 15), nil, Library.Theme.ControlTop, Library.Theme.ControlBottom)
 				bindBtnOuter.ZIndex = 6
@@ -1721,6 +1738,7 @@ function Library:CreateWindow(cfg)
 						mBtn.MouseLeave:Connect(function() Util.Tween(mBtn, 0.08, { BackgroundTransparency = 1 }) end)
 						mBtn.MouseButton1Click:Connect(function()
 							bindMode = modeName
+							Library.Flags[flag] = { Key = currentKey, Type = bindMode }
 							if Library.KeybindList and currentKey ~= Enum.KeyCode.Unknown then
 								Library.KeybindList:SetBind(elemName, currentKey.Name, bindMode, true)
 							end
@@ -1735,7 +1753,8 @@ function Library:CreateWindow(cfg)
 					end)
 				end)
 
-				UserInputService.InputBegan:Connect(function(input, gp)
+				table.insert(Library.Connections, UserInputService.InputBegan:Connect(function(input, gp)
+					if Library.Unloaded then return end
 					if listening then
 						if input.UserInputType == Enum.UserInputType.Keyboard then
 							listening = false
@@ -1745,6 +1764,7 @@ function Library:CreateWindow(cfg)
 								currentKey = input.KeyCode
 							end
 							refreshBindState(onToggleVal and onToggleVal())
+							Library.Flags[flag] = { Key = currentKey, Type = bindMode }
 							if Library.KeybindList and currentKey ~= Enum.KeyCode.Unknown then
 								Library.KeybindList:SetBind(elemName, currentKey.Name, bindMode, onToggleVal and onToggleVal())
 							end
@@ -1762,9 +1782,10 @@ function Library:CreateWindow(cfg)
 							Library.KeybindList:SetBind(elemName, currentKey.Name, bindMode, onToggleVal and onToggleVal())
 						end
 					end
-				end)
+				end))
 
-				UserInputService.InputEnded:Connect(function(input)
+				table.insert(Library.Connections, UserInputService.InputEnded:Connect(function(input)
+					if Library.Unloaded then return end
 					if currentKey ~= Enum.KeyCode.Unknown and input.KeyCode == currentKey and bindMode == "Hold" then
 						if onToggleVal then onToggleVal(false) end
 						refreshBindState(false)
@@ -1772,7 +1793,28 @@ function Library:CreateWindow(cfg)
 							Library.KeybindList:SetBind(elemName, currentKey.Name, bindMode, false)
 						end
 					end
-				end)
+				end))
+
+				-- Handle so SaveManager can restore keybind state from configs
+				local KeybindHandle = {
+					Set = function(_, data)
+						if typeof(data) == "table" then
+							if data.Key ~= nil then currentKey = data.Key end
+							if data.Type ~= nil then bindMode = data.Type end
+						elseif typeof(data) == "EnumItem" then
+							currentKey = data
+						end
+						Library.Flags[flag] = { Key = currentKey, Type = bindMode }
+						if Library.KeybindList and currentKey ~= Enum.KeyCode.Unknown then
+							Library.KeybindList:SetBind(elemName, currentKey.Name, bindMode, onToggleVal and onToggleVal() or false)
+						end
+						refreshBindState(onToggleVal and onToggleVal() or false)
+					end,
+					Get = function()
+						return { Key = currentKey, Type = bindMode }
+					end,
+				}
+				Library.FlagRegistry[flag] = KeybindHandle
 
 				return bindBtnOuter
 			end
@@ -1917,6 +1959,7 @@ function Library:CreateWindow(cfg)
 				end
 
 				Library.Flags[flag] = state
+				Util.RegisterFlag(flag, Toggle)
 				return Toggle
 			end
 
@@ -1986,6 +2029,9 @@ function Library:CreateWindow(cfg)
 					end
 					return active
 				end)
+
+				-- Alias so external code (settings manager) can call :AddKeybindPicker
+				Group.AddKeybindPicker = Group.AddKeybind
 			end
 
 			-- SLIDER (Smooth animations + Floating tooltip + Direct manual number input)
@@ -2206,6 +2252,7 @@ function Library:CreateWindow(cfg)
 					cb(v)
 				end
 				function Slider:Get() return curVal end
+				Util.RegisterFlag(flag, Slider)
 				return Slider
 			end
 
@@ -2488,6 +2535,7 @@ function Library:CreateWindow(cfg)
 					Library.Flags[flag] = isMulti and multiSelected or curVal
 				end
 
+				Util.RegisterFlag(flag, Dropdown)
 				return Dropdown
 			end
 
@@ -2663,45 +2711,94 @@ end
 function Library:SetThemeColor(colorType, newColor)
 	if not colorType or not newColor then return end
 
-	local internalKey = colorType
-	if colorType == "FontColor" or colorType == "Text" then
-		internalKey = "FontColor"
-		Library.Theme.Text = newColor
-	elseif colorType == "MainColor" or colorType == "GroupTop" then
-		internalKey = "MainColor"
-		Library.Theme.GroupTop = newColor
-	elseif colorType == "AccentColor" or colorType == "Accent1" then
-		internalKey = "AccentColor"
-		Library.Theme.Accent1 = newColor
-	elseif colorType == "BackgroundColor" or colorType == "MainTop" then
-		internalKey = "BackgroundColor"
-		Library.Theme.MainTop = newColor
-	elseif colorType == "OutlineColor" or colorType == "OuterBorder" then
-		internalKey = "OutlineColor"
-		Library.Theme.OuterBorder = newColor
-	end
-
-	-- Live-update all registered UI elements across the whole menu
-	if Library.Registry[internalKey] then
-		for _, item in ipairs(Library.Registry[internalKey]) do
-			if item.Instance and item.Instance.Parent then
-				pcall(function()
-					item.Instance[item.Property] = newColor
-				end)
+	-- Repaint helper: updates the Theme key, every registered instance & signal callbacks
+	local function applyKey(key, col)
+		Library.Theme[key] = col
+		if Library.Registry[key] then
+			for _, item in ipairs(Library.Registry[key]) do
+				if item.Instance and item.Instance.Parent then
+					pcall(function()
+						item.Instance[item.Property] = col
+					end)
+				end
+			end
+		end
+		if Library.ThemeSignals[key] then
+			for _, cb in ipairs(Library.ThemeSignals[key]) do
+				pcall(cb, col)
 			end
 		end
 	end
 
-	if Library.ThemeSignals[internalKey] then
-		for _, cb in ipairs(Library.ThemeSignals[internalKey]) do
-			pcall(cb, newColor)
-		end
+	-- Multiplies a color (clamped) to derive matching shades
+	local function shade(col, mul)
+		return Color3.new(
+			math.clamp(col.R * mul, 0, 1),
+			math.clamp(col.G * mul, 0, 1),
+			math.clamp(col.B * mul, 0, 1)
+		)
+	end
+
+	-- Live-update all registered UI elements across the whole menu, deriving related tones
+	if colorType == "FontColor" or colorType == "Text" then
+		applyKey("FontColor", newColor)
+		applyKey("TextDim", shade(newColor, 0.69))
+		applyKey("TextDark", shade(newColor, 0.44))
+	elseif colorType == "MainColor" or colorType == "GroupTop" then
+		applyKey("MainColor", newColor)
+		applyKey("GroupTop", newColor)
+		applyKey("GroupBottom", shade(newColor, 0.71))
+		applyKey("ControlTop", shade(newColor, 1.5))
+		applyKey("ControlBottom", shade(newColor, 1.0))
+		applyKey("ControlHover", shade(newColor, 1.93))
+		applyKey("MidBorder", shade(newColor, 2.07))
+	elseif colorType == "AccentColor" or colorType == "Accent1" then
+		applyKey("AccentColor", newColor)
+		applyKey("Accent1", newColor)
+		applyKey("AccentDark", shade(newColor, 0.63))
+	elseif colorType == "BackgroundColor" or colorType == "MainTop" then
+		applyKey("BackgroundColor", newColor)
+		applyKey("MainTop", newColor)
+		applyKey("MainBottom", shade(newColor, 0.56))
+	elseif colorType == "OutlineColor" or colorType == "OuterBorder" then
+		applyKey("OutlineColor", newColor)
+		applyKey("OuterBorder", newColor)
 	end
 end
 
 function Library:SetTheme(themeTable)
 	for name, col in pairs(themeTable or {}) do
 		Library:SetThemeColor(name, col)
+	end
+end
+
+function Library:Unload()
+	if self.Unloaded then return end
+	self.Unloaded = true
+	self.Open = false
+
+	if typeof(self.OnUnload) == "function" then
+		pcall(self.OnUnload)
+	end
+
+	for _, conn in ipairs(self.Connections) do
+		pcall(function()
+			conn:Disconnect()
+		end)
+	end
+	table.clear(self.Connections)
+
+	if blurEffect then
+		pcall(function()
+			blurEffect:Destroy()
+		end)
+		blurEffect = nil
+	end
+
+	if screenGui then
+		pcall(function()
+			screenGui:Destroy()
+		end)
 	end
 end
 
