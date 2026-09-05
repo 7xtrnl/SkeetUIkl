@@ -329,6 +329,58 @@ function Util.PlaySound(soundType)
 end
 
 --============================================================================--
+-- HOVER TOOLTIP SYSTEM
+--============================================================================--
+local tooltipRef = nil
+
+function Util.ShowTooltip(text)
+	if not text or text == "" then return end
+
+	if not tooltipRef then
+		local tOuter, tInner = Util.CreateHardBorder(screenGui, UDim2.fromOffset(40, 18), UDim2.fromOffset(0, 0), Library.Theme.MainTop, Library.Theme.MainBottom, true)
+		tOuter.ZIndex = 5000
+		tOuter.Visible = false
+		tOuter.ClipsDescendants = true
+		Util.AddSkeetGradientBar(tInner, 1)
+
+		local tLbl = New("TextLabel", {
+			Size = UDim2.new(1, -10, 1, 0),
+			Position = UDim2.fromOffset(5, 0),
+			BackgroundTransparency = 1,
+			Font = Library.Theme.Font,
+			TextSize = Library.Theme.FontSize - 1,
+			TextColor3 = Library.Theme.Text,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextWrapped = true,
+			Parent = tInner,
+		})
+		Util.RegisterTheme(tLbl, "TextColor3", "FontColor")
+		tooltipRef = { Outer = tOuter, Label = tLbl }
+	end
+
+	tooltipRef.Label.Text = text
+	local lineH = 15
+	local w = math.clamp(tooltipRef.Label.TextBounds.X + 14, 40, 300)
+	local h = math.clamp(math.ceil(tooltipRef.Label.TextBounds.Y / lineH) * lineH + 6, 18, 92)
+	tooltipRef.Outer.Size = UDim2.fromOffset(w, h)
+
+	local m = UserInputService:GetMouseLocation()
+	tooltipRef.Outer.Position = UDim2.fromOffset(m.X + 14, m.Y + 18)
+	tooltipRef.Outer.Visible = true
+end
+
+function Util.HideTooltip()
+	if tooltipRef then tooltipRef.Outer.Visible = false end
+end
+
+UserInputService.InputChanged:Connect(function(input)
+	if tooltipRef and tooltipRef.Outer.Visible and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local m = input.Position
+		tooltipRef.Outer.Position = UDim2.fromOffset(m.X + 14, m.Y + 18)
+	end
+end)
+
+--============================================================================--
 -- WATERMARK HUD
 --============================================================================--
 function Library:CreateWatermark(customTitle)
@@ -360,6 +412,36 @@ function Library:CreateWatermark(customTitle)
 	})
 	Util.RegisterTheme(wmLabel, "TextColor3", "FontColor")
 
+	-- Restore saved watermark position from config flags
+	local savedWmPos = Library.Flags["__wm_pos"]
+	if typeof(savedWmPos) == "table" and savedWmPos.X and savedWmPos.Y then
+		wmOuter.Position = UDim2.fromOffset(savedWmPos.X, savedWmPos.Y)
+	end
+
+	-- Draggable watermark
+	do
+		local dragging, dragStart, startPos
+		wmInner.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = true
+				dragStart = input.Position
+				startPos = wmOuter.Position
+			end
+		end)
+		UserInputService.InputChanged:Connect(function(input)
+			if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+				local delta = input.Position - dragStart
+				wmOuter.Position = UDim2.fromOffset(startPos.X.Offset + delta.X, startPos.Y.Offset + delta.Y)
+			end
+		end)
+		UserInputService.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 and dragging then
+				dragging = false
+				Library.Flags["__wm_pos"] = { X = wmOuter.Position.X.Offset, Y = wmOuter.Position.Y.Offset }
+			end
+		end)
+	end
+
 	local fpsCount = 0
 	local lastFpsUpdate = tick()
 	table.insert(Library.Connections, RunService.RenderStepped:Connect(function()
@@ -368,7 +450,8 @@ function Library:CreateWatermark(customTitle)
 		if tick() - lastFpsUpdate >= 0.5 then
 			local fps = math.floor(fpsCount / (tick() - lastFpsUpdate))
 			local ping = math.floor((LocalPlayer and LocalPlayer:GetNetworkPing() or 0.015) * 1000)
-			wmLabel.Text = string.format("%s | %s | %d fps | %d ms", title, LocalPlayer and LocalPlayer.DisplayName or "User", fps, ping)
+			local okClk, clock = pcall(os.date, "%H:%M")
+			wmLabel.Text = string.format("%s | %s | %d fps | %d ms | %s", title, LocalPlayer and LocalPlayer.DisplayName or "User", fps, ping, okClk and clock or "")
 			fpsCount = 0
 			lastFpsUpdate = tick()
 		end
@@ -385,6 +468,12 @@ function Library:CreateKeybindList()
 	local kbOuter, kbInner = Util.CreateHardBorder(screenGui, UDim2.fromOffset(190, 26), UDim2.fromOffset(20, 56), Library.Theme.MainTop, Library.Theme.MainBottom, true)
 	kbOuter.ZIndex = 50
 	Util.AddSkeetGradientBar(kbInner, 2)
+
+	-- Restore saved keybind-list position from config flags
+	local savedKbPos = Library.Flags["__kb_pos"]
+	if typeof(savedKbPos) == "table" and savedKbPos.X and savedKbPos.Y then
+		kbOuter.Position = UDim2.fromOffset(savedKbPos.X, savedKbPos.Y)
+	end
 
 	local header = New("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 22),
@@ -482,9 +571,13 @@ function Library:CreateKeybindList()
 		end
 	end)
 	UserInputService.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+		if input.UserInputType == Enum.UserInputType.MouseButton1 and dragging then
+			dragging = false
+			Library.Flags["__kb_pos"] = { X = kbOuter.Position.X.Offset, Y = kbOuter.Position.Y.Offset }
+		end
 	end)
 
+	Library.KeybindListFrame = kbOuter
 	Library.KeybindList = KeybindHUD
 	return KeybindHUD
 end
@@ -790,11 +883,30 @@ function Library:CreateWindow(cfg)
 
 	searchInput:GetPropertyChangedSignal("Text"):Connect(function()
 		Library.SearchQuery = string.lower(searchInput.Text)
+		local query = Library.SearchQuery
+		local total = 0
+
 		for _, control in ipairs(Library.SearchableControls) do
 			if control.Row and control.SearchText then
-				local matches = string.find(control.SearchText, Library.SearchQuery, 1, true) ~= nil
-				control.Row.Visible = matches or Library.SearchQuery == ""
+				local matches = query == "" or string.find(control.SearchText, query, 1, true) ~= nil
+				control.Row.Visible = matches
+				if matches then total = total + 1 end
 			end
+		end
+
+		-- Hide whole groupboxes that no longer have any visible rows
+		local seen = {}
+		for _, control in ipairs(Library.SearchableControls) do
+			if control.Groupbox then
+				seen[control.Groupbox] = (seen[control.Groupbox] or 0) + (control.Row.Visible and 1 or 0)
+			end
+		end
+		for gb, count in pairs(seen) do
+			gb.Visible = count > 0
+		end
+
+		if Library.NoResultsLabel then
+			Library.NoResultsLabel.Visible = query ~= "" and total == 0
 		end
 	end)
 
@@ -898,6 +1010,22 @@ function Library:CreateWindow(cfg)
 		Parent = contentAccentGlow,
 	})
 
+	-- "No results" feedback shown when search matches nothing
+	local noResultsLbl = New("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 24),
+		Position = UDim2.fromOffset(10, 10),
+		BackgroundTransparency = 1,
+		Font = Library.Theme.Font,
+		TextSize = Library.Theme.FontSize,
+		TextColor3 = Library.Theme.TextDark,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = "No features match your search.",
+		Visible = false,
+		ZIndex = 50,
+		Parent = contentHolder,
+	})
+	Library.NoResultsLabel = noResultsLbl
+
 	-- Sleek authentic bottom footer status bar
 	local footerBar = New("Frame", {
 		Size = UDim2.new(1, -6, 0, 20),
@@ -972,7 +1100,7 @@ function Library:CreateWindow(cfg)
 		TextSize = Library.Theme.FontSize - 2,
 		TextColor3 = Library.Theme.TextDim,
 		TextXAlignment = Enum.TextXAlignment.Right,
-		Text = "60 fps | 14 ms | [INSERT]",
+		Text = string.format("60 fps | 14 ms | [%s]", Library.ToggleKey and Library.ToggleKey.Name or "INSERT"),
 		ZIndex = 11,
 		Parent = footerBar,
 	})
@@ -984,7 +1112,7 @@ function Library:CreateWindow(cfg)
 		if tick() - fLastUpdate >= 0.5 then
 			local curFps = math.floor(fFpsCount / (tick() - fLastUpdate))
 			local curPing = math.floor((LocalPlayer and LocalPlayer:GetNetworkPing() or 0.015) * 1000)
-			footerStats.Text = string.format("%d fps | %d ms | [INSERT]", curFps, curPing)
+			footerStats.Text = string.format("%d fps | %d ms | [%s]", curFps, curPing, Library.ToggleKey and Library.ToggleKey.Name or "INSERT")
 			fFpsCount = 0
 			fLastUpdate = tick()
 		end
@@ -1005,6 +1133,28 @@ function Library:CreateWindow(cfg)
 			Parent = tabBtnInner,
 		})
 		Util.RegisterTheme(activePill, "BackgroundColor3", "AccentColor")
+
+		local tabCorner = New("Frame", {
+			Size = UDim2.fromOffset(4, 4),
+			Position = UDim2.fromOffset(1, 1),
+			BackgroundColor3 = Library.Theme.Accent1,
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ZIndex = 14,
+			Parent = tabBtnInner,
+		})
+		Util.RegisterTheme(tabCorner, "BackgroundColor3", "AccentColor")
+
+		local topEdge = New("Frame", {
+			Size = UDim2.new(1, 0, 0, 1),
+			Position = UDim2.fromOffset(1, 1),
+			BackgroundColor3 = Library.Theme.Accent1,
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ZIndex = 14,
+			Parent = tabBtnInner,
+		})
+		Util.RegisterTheme(topEdge, "BackgroundColor3", "AccentColor")
 
 		local hasIcon = (iconAsset ~= nil and typeof(iconAsset) == "string")
 		local tabIcon = nil
@@ -1263,6 +1413,8 @@ function Library:CreateWindow(cfg)
 				Util.Tween(other.Label, 0.15, { TextColor3 = Library.Theme.TextDim })
 				if other.Icon then Util.Tween(other.Icon, 0.15, { ImageColor3 = Library.Theme.TextDim }) end
 				Util.Tween(other.Inner, 0.15, { BackgroundColor3 = Library.Theme.ControlTop })
+				if other.Corner then Util.Tween(other.Corner, 0.12, { BackgroundTransparency = 1 }) end
+				if other.TopEdge then Util.Tween(other.TopEdge, 0.12, { BackgroundTransparency = 1 }) end
 			end
 			tabPage.Position = UDim2.fromOffset(0, 6)
 			tabPage.Visible = true
@@ -1270,6 +1422,8 @@ function Library:CreateWindow(cfg)
 			Util.Tween(tabLabel, 0.18, { TextColor3 = Library.Theme.Text })
 			if tabIcon then Util.Tween(tabIcon, 0.18, { ImageColor3 = Library.Theme.Accent1 }) end
 			Util.Tween(tabBtnInner, 0.18, { BackgroundColor3 = Library.Theme.GroupTop })
+			Util.Tween(tabCorner, 0.18, { BackgroundTransparency = 0 })
+			Util.Tween(topEdge, 0.18, { BackgroundTransparency = 0 })
 			Util.Tween(tabPage, 0.18, { Position = UDim2.fromOffset(0, 0) }, Enum.EasingStyle.Quart)
 		end
 
@@ -1297,6 +1451,8 @@ function Library:CreateWindow(cfg)
 		Tab.Label = tabLabel
 		Tab.Icon  = tabIcon
 		Tab.Pill  = activePill
+		Tab.Corner = tabCorner
+		Tab.TopEdge = topEdge
 		table.insert(Window.Tabs, Tab)
 
 		if #Window.Tabs == 1 then selectTab() end
@@ -1308,21 +1464,8 @@ function Library:CreateWindow(cfg)
 
 			local gbOuter, gbInner = Util.CreateHardBorder(parentCol, UDim2.new(1, 0, 0, 0), nil, Library.Theme.GroupTop, Library.Theme.GroupBottom)
 			gbOuter.AutomaticSize = Enum.AutomaticSize.Y
-			
-			-- Add subtle rounded corners for modern aesthetic
-			New("UICorner", { CornerRadius = UDim.new(0, 4), Parent = gbOuter })
-			New("UICorner", { CornerRadius = UDim.new(0, 3), Parent = gbInner })
-			
-			-- Add subtle gradient overlay for depth
-			local gbGradient = New("UIGradient", {
-				Rotation = 135,
-				Color = ColorSequence.new({
-					ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 255, 255)),
-					ColorSequenceKeypoint.new(0.5, Color3.fromRGB(240, 240, 245)),
-					ColorSequenceKeypoint.new(1.0, Color3.fromRGB(220, 220, 230)),
-				}),
-				Parent = gbInner,
-			})
+			-- Hard-edge skeet: no rounded corners, no soft gradient overlay
+			gbOuter.Name = "SkeetGroupbox"
 
 			-- Clean Skeet-style header badge seamlessly breaking top border line
 			local titleHold = New("Frame", {
@@ -1335,7 +1478,6 @@ function Library:CreateWindow(cfg)
 				Parent = gbOuter,
 			})
 			Util.RegisterTheme(titleHold, "BackgroundColor3", "BackgroundColor")
-			New("UICorner", { CornerRadius = UDim.new(0, 3), Parent = titleHold })
 
 			New("UIPadding", {
 				PaddingLeft = UDim.new(0, 5),
@@ -1351,7 +1493,7 @@ function Library:CreateWindow(cfg)
 				Font = Library.Theme.FontBold,
 				TextSize = Library.Theme.FontSize - 1,
 				TextColor3 = Library.Theme.Text,
-				Text = string.upper(gTitle),
+				Text = "▾ " .. string.upper(gTitle),
 				TextYAlignment = Enum.TextYAlignment.Center,
 				ZIndex = 9,
 				Parent = titleHold,
@@ -1374,6 +1516,24 @@ function Library:CreateWindow(cfg)
 				PaddingBottom = UDim.new(0, 8),
 				Parent = elemList,
 			})
+
+			local collapsed = false
+			titleHold.InputBegan:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton1 then
+					Util.PlaySound("click")
+					collapsed = not collapsed
+					titleText.Text = (collapsed and "▸ " or "▾ ") .. string.upper(gTitle)
+					elemList.Visible = not collapsed
+				end
+			end)
+
+			-- Optional hover tooltip via cfg.Description
+			local function hookTooltip(obj, text)
+				if text and text ~= "" then
+					obj.MouseEnter:Connect(function() Util.ShowTooltip(text) end)
+					obj.MouseLeave:Connect(function() Util.HideTooltip() end)
+				end
+			end
 
 			local Group = {}
 
@@ -1839,7 +1999,8 @@ function Library:CreateWindow(cfg)
 				table.insert(Library.SearchableControls, {
 					Row = row,
 					SearchText = string.lower(tText),
-					Type = "Toggle"
+					Type = "Toggle",
+					Groupbox = gbOuter,
 				})
 
 				local hoverBg = New("Frame", {
@@ -1856,21 +2017,36 @@ function Library:CreateWindow(cfg)
 					row,
 					UDim2.fromOffset(BOX, BOX),
 					UDim2.fromOffset(0, 2),
-					state and Library.Theme.Accent1 or offFill,
+					offFill,
 					offFill
 				)
 				boxOuter.ZIndex = 2
 
-				local checkFill = New("Frame", {
+				-- Skeet-style tick: 1px accent inner border + check glyph
+				local checkBorder = New("Frame", {
 					Size = UDim2.new(1, -4, 1, -4),
 					Position = UDim2.fromOffset(2, 2),
-					BackgroundColor3 = Library.Theme.Accent1,
-					BackgroundTransparency = state and 0 or 1,
-					BorderSizePixel = 0,
+					BackgroundTransparency = 1,
+					BorderSizePixel = 1,
+					BorderColor3 = Library.Theme.Accent1,
 					ZIndex = 3,
 					Parent = boxInner,
 				})
-				Util.RegisterTheme(checkFill, "BackgroundColor3", "AccentColor")
+				Util.RegisterTheme(checkBorder, "BorderColor3", "AccentColor")
+
+				local checkGlyph = New("TextLabel", {
+					Size = UDim2.new(1, -3, 1, -3),
+					Position = UDim2.fromOffset(2, 1),
+					BackgroundTransparency = 1,
+					Font = Library.Theme.FontBold,
+					TextSize = 9,
+					TextColor3 = Library.Theme.Accent1,
+					TextTransparency = state and 0 or 1,
+					Text = "✓",
+					ZIndex = 4,
+					Parent = boxInner,
+				})
+				Util.RegisterTheme(checkGlyph, "TextColor3", "AccentColor")
 
 				local label = New("TextLabel", {
 					Size = UDim2.new(1, -22, 1, 0),
@@ -1908,12 +2084,14 @@ function Library:CreateWindow(cfg)
 					Library.Flags[flag] = val
 
 					if val then
-						Util.Tween(boxInner, 0.1, { BackgroundColor3 = Library.Theme.Accent1 })
-						Util.Tween(checkFill, 0.1, { BackgroundTransparency = 0 })
+						Util.Tween(boxInner, 0.1, { BackgroundColor3 = Color3.fromRGB(44, 44, 52) })
+						Util.Tween(checkGlyph, 0.1, { TextTransparency = 0 })
+						Util.Tween(checkBorder, 0.1, { BorderColor3 = Library.Theme.Accent1 })
 						Util.Tween(label, 0.1, { TextColor3 = Library.Theme.Text })
 					else
 						Util.Tween(boxInner, 0.1, { BackgroundColor3 = offFill })
-						Util.Tween(checkFill, 0.1, { BackgroundTransparency = 1 })
+						Util.Tween(checkGlyph, 0.1, { TextTransparency = 1 })
+						Util.Tween(checkBorder, 0.1, { BorderColor3 = Color3.fromRGB(70, 70, 80) })
 						Util.Tween(label, 0.1, { TextColor3 = Library.Theme.TextDim })
 					end
 
@@ -1939,6 +2117,7 @@ function Library:CreateWindow(cfg)
 					Util.PlaySound("click")
 					setToggle(not Toggle.Value)
 				end)
+				hookTooltip(clickBtn, tCfg.Description)
 
 				function Toggle:Set(val) setToggle(val) end
 				function Toggle:Get() return Toggle.Value end
@@ -1946,15 +2125,17 @@ function Library:CreateWindow(cfg)
 				function Toggle:AddColorpicker(cpCfg)
 					cpCfg = cpCfg or {}
 					local cp = createColorPicker(inlineHold, cpCfg.Default, cpCfg.Flag or (flag .. "_Color"), cpCfg.Callback or function() end)
+					hookTooltip(cp.Frame, cpCfg.Description)
 					return Toggle, cp
 				end
 
 				function Toggle:AddKeybind(kbCfg)
 					kbCfg = kbCfg or {}
-					createKeybindElement(inlineHold, kbCfg.Default or Enum.KeyCode.E, kbCfg.Mode or "Toggle", kbCfg.Flag or (flag .. "_Bind"), tText, function(newVal)
+					local kbEl = createKeybindElement(inlineHold, kbCfg.Default or Enum.KeyCode.E, kbCfg.Mode or "Toggle", kbCfg.Flag or (flag .. "_Bind"), tText, function(newVal)
 						if newVal ~= nil then setToggle(newVal) end
 						return Toggle.Value
 					end)
+					hookTooltip(kbEl, kbCfg.Description)
 					return Toggle
 				end
 
@@ -1989,7 +2170,9 @@ function Library:CreateWindow(cfg)
 					BackgroundTransparency = 1,
 					Parent = row,
 				})
-				return createColorPicker(pickerHold, cpCfg.Default, cpCfg.Flag or cpCfg.Text, cpCfg.Callback or function() end)
+				local cp = createColorPicker(pickerHold, cpCfg.Default, cpCfg.Flag or cpCfg.Text, cpCfg.Callback or function() end)
+				hookTooltip(cp.Frame, cpCfg.Description)
+				return cp
 			end
 
 			-- STANDALONE KEYBIND
@@ -2029,6 +2212,7 @@ function Library:CreateWindow(cfg)
 					end
 					return active
 				end)
+				hookTooltip(bindHold, kbCfg.Description)
 
 				end
 
@@ -2044,6 +2228,7 @@ function Library:CreateWindow(cfg)
 				local min    = sCfg.Min or 0
 				local max    = sCfg.Max or 100
 				local curVal = sCfg.Default or min
+				local defaultVal = sCfg.Default or min
 				local suffix = sCfg.Suffix or ""
 				local flag   = sCfg.Flag or sText
 				local cb     = sCfg.Callback or function() end
@@ -2058,8 +2243,10 @@ function Library:CreateWindow(cfg)
 				table.insert(Library.SearchableControls, {
 					Row = row,
 					SearchText = string.lower(sText),
-					Type = "Slider"
+					Type = "Slider",
+					Groupbox = gbOuter,
 				})
+				hookTooltip(row, sCfg.Description)
 
 				local label = New("TextLabel", {
 					Size = UDim2.new(0.65, 0, 0, 14),
@@ -2156,6 +2343,17 @@ function Library:CreateWindow(cfg)
 					Parent = trackInner,
 				})
 
+				-- 50% center notch so the middle reads clearly
+				New("Frame", {
+					Size = UDim2.new(0, 1, 0.7, 0),
+					Position = UDim2.new(0.5, -1, 0.15, 0),
+					BackgroundColor3 = Library.Theme.TextDark,
+					BackgroundTransparency = 0.5,
+					BorderSizePixel = 0,
+					ZIndex = trackInner.ZIndex + 1,
+					Parent = trackInner,
+				})
+
 				local dragging = false
 				local function updateSlider(xPos)
 					local x = math.clamp((xPos - trackInner.AbsolutePosition.X) / trackInner.AbsoluteSize.X, 0, 1)
@@ -2170,8 +2368,25 @@ function Library:CreateWindow(cfg)
 					cb(val)
 				end
 
+				local lastValClick = 0
 				valLabel.InputBegan:Connect(function(input)
 					if input.UserInputType == Enum.UserInputType.MouseButton1 then
+						-- Double-click the value = reset to the config default
+						if tick() - lastValClick < 0.35 then
+							lastValClick = 0
+							curVal = defaultVal
+							Library.Flags[flag] = defaultVal
+							local resetPct = (defaultVal - min) / (max - min)
+							valLabel.Text = tostring(defaultVal) .. suffix
+							tooltipText.Text = tostring(defaultVal)
+							Util.Tween(fill, 0.12, { Size = UDim2.new(resetPct, 0, 1, 0) })
+							Util.Tween(thumb, 0.12, { Position = UDim2.new(resetPct, 0, 0.5, 0) })
+							Util.Tween(tooltip, 0.12, { Position = UDim2.new(resetPct, 0, 0, -3) })
+							cb(defaultVal)
+							Util.PlaySound("toggle")
+							return
+						end
+						lastValClick = tick()
 						valLabel.Visible = false
 						manualInput.Visible = true
 						manualInput.Text = tostring(curVal)
@@ -2295,7 +2510,8 @@ function Library:CreateWindow(cfg)
 				table.insert(Library.SearchableControls, {
 					Row = row,
 					SearchText = string.lower(dText),
-					Type = "Dropdown"
+					Type = "Dropdown",
+					Groupbox = gbOuter,
 				})
 
 				local label = New("TextLabel", {
@@ -2494,6 +2710,7 @@ function Library:CreateWindow(cfg)
 					Parent = ddOuter,
 				})
 				clickBtn.MouseButton1Click:Connect(openDropdown)
+				hookTooltip(clickBtn, dCfg.Description)
 
 				Library.Flags[flag] = isMulti and multiSelected or curVal
 
@@ -2559,7 +2776,8 @@ function Library:CreateWindow(cfg)
 				table.insert(Library.SearchableControls, {
 					Row = btnOuter,
 					SearchText = string.lower(bText),
-					Type = "Button"
+					Type = "Button",
+					Groupbox = gbOuter,
 				})
 
 				local hasIcon = (iconId ~= nil and typeof(iconId) == "string")
@@ -2614,8 +2832,9 @@ function Library:CreateWindow(cfg)
 				end)
 				clickBtn.MouseButton1Click:Connect(function()
 					Util.PlaySound("click")
-					-- Color flash
-					Util.Tween(btnInner, 0.04, { BackgroundColor3 = Library.Theme.Accent1 })
+					-- Color flash (risky buttons don't flash accent green)
+					local flashCol = isRisky and Color3.fromRGB(255, 130, 130) or Library.Theme.Accent1
+					Util.Tween(btnInner, 0.04, { BackgroundColor3 = flashCol })
 					task.delay(0.08, function() Util.Tween(btnInner, 0.14, { BackgroundColor3 = topCol }) end)
 
 					-- Ripple sweep left → right
@@ -2641,6 +2860,7 @@ function Library:CreateWindow(cfg)
 					sweep.Completed:Connect(function() if ripple.Parent then ripple:Destroy() end end)
 					cb()
 				end)
+				hookTooltip(clickBtn, bCfg.Description)
 
 				return btnOuter
 			end
@@ -2692,6 +2912,7 @@ function Library:CreateWindow(cfg)
 					Library.Flags[flag] = box.Text
 					cb(box.Text)
 				end)
+				hookTooltip(box, tbCfg.Description)
 
 				return box
 			end
