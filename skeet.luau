@@ -2030,9 +2030,12 @@ function Library:CreateWindow(cfg)
 					return active
 				end)
 
-				-- Alias so external code (settings manager) can call :AddKeybindPicker
-				Group.AddKeybindPicker = Group.AddKeybind
-			end
+				end
+
+			-- Alias so external code (settings manager) can call :AddKeybindPicker.
+			-- Assigned at the group level (AFTER the function def) so it exists
+			-- on ANY fresh groupbox, not only after AddKeybind was called once.
+			Group.AddKeybindPicker = Group.AddKeybind
 
 			-- SLIDER (Smooth animations + Floating tooltip + Direct manual number input)
 			function Group:AddSlider(sCfg)
