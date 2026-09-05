@@ -427,6 +427,72 @@ function ThemeManager:BuildThemeSection(groupbox)
 			SettingsManager.Library:SetThemeColor("OutlineColor", col)
 		end,
 	})
+	
+	-- Menu KeybindPicker
+	groupbox:AddKeybindPicker({
+		Text = "Menu Keybind",
+		Default = Enum.KeyCode.RightControl,
+		Mode = "Toggle",
+		Callback = function(active)
+			if SettingsManager.Library and SettingsManager.Library.ToggleKey then
+				SettingsManager.Library.ToggleKeyActive = active
+			end
+		end,
+		Flag = "__menu_keybind",
+	})
+	
+	-- Additional Action Buttons
+	groupbox:AddButton({
+		Text = "🧹 Unload Script",
+		Risky = true,
+		Callback = function()
+			if SettingsManager.Library then
+				Library.Unloaded = true
+				Library:Notify({ Title = "Settings Manager", Text = "Script unloaded successfully!", Duration = 2 })
+			end
+		end,
+	})
+	
+	groupbox:AddButton({
+		Text = "↻ Rejoin Server",
+		Callback = function()
+			if SettingsManager.Library then
+				SettingsManager.Library:Notify({ Title = "Settings Manager", Text = "Rejoining server...", Duration = 2 })
+			end
+			if getgenv then
+				local genv = getgenv()
+				if genv.syn and genv.syn.request then
+					genv.syn.request({ Type = "RequestRebirth" })
+				end
+			end
+			task.spawn(function()
+				for i = 10, 1, -1 do
+					if Library then Library:Notify({ Title = "Settings Manager", Text = string.format("Rejoining in %d seconds...", i), Duration = 1 }) end
+					task.wait(1)
+				end
+				if getrenovate then getrenovate() elseif QueueOnTeleport then QueueOnTeleport() elseif syn then syn.queue_on_teleport("loadstring(game:HttpGet('https://your-repo/script.lua'))()") end
+				game:Restart()
+			end)
+			end
+		end,
+	})
+	
+	groupbox:AddButton({
+		Text = "🗂️ Open Settings Manager",
+		Callback = function()
+			if SettingsManager.Library then
+				SettingsManager.Library:Notify({ Title = "Settings Manager", Text = "Settings manager opened!", Duration = 1 })
+			end
+			if SettingsManager.Library and SettingsManager.Library:CreateWindow then
+				local sWindow = SettingsManager.Library:CreateWindow({ Title = "Skeetware Settings", Size = UDim2.fromOffset(520, 420) })
+				local sTab = sWindow:AddTab("Settings", "⚙️")
+				local sGroup = sTab:AddGroupbox("Settings")
+					SaveManager:BuildConfigSection(sGroup)
+					ThemeManager:BuildThemeSection(sGroup)
+				end
+		end,
+		end,
+	})
 end
 
 return SettingsManager
