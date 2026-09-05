@@ -581,50 +581,55 @@ function Library:CreateWindow(cfg)
 	winOuter.AnchorPoint = Vector2.new(0.5, 0.5)
 	winOuter.ZIndex = 10
 
-	-- Gorgeous animated gradient background with rich colors
+	-- Full-bleed ambient wash (no boxed overlay)
 	local animBg = New("Frame", {
 		Size = UDim2.fromScale(1, 1),
 		Position = UDim2.fromOffset(0, 0),
-		BackgroundColor3 = Color3.fromRGB(28, 28, 34),
+		BackgroundColor3 = Color3.fromRGB(22, 22, 26),
 		BorderSizePixel = 0,
 		ZIndex = 1,
+		ClipsDescendants = true,
 		Parent = winInner,
 	})
 
 	local bgGradient = New("UIGradient", {
-		Rotation = 135,
+		Rotation = 90,
 		Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0.0, Color3.fromRGB(42, 42, 52)),
-			ColorSequenceKeypoint.new(0.15, Color3.fromRGB(36, 36, 44)),
-			ColorSequenceKeypoint.new(0.35, Color3.fromRGB(28, 28, 36)),
-			ColorSequenceKeypoint.new(0.6, Color3.fromRGB(24, 24, 30)),
-			ColorSequenceKeypoint.new(0.85, Color3.fromRGB(20, 20, 26)),
-			ColorSequenceKeypoint.new(1.0, Color3.fromRGB(16, 16, 20)),
+			ColorSequenceKeypoint.new(0.0, Color3.fromRGB(30, 30, 36)),
+			ColorSequenceKeypoint.new(0.45, Color3.fromRGB(22, 22, 26)),
+			ColorSequenceKeypoint.new(1.0, Color3.fromRGB(14, 14, 17)),
 		}),
 		Parent = animBg,
 	})
 
-	-- Animated accent color overlay for depth
-	local accentOverlay = New("Frame", {
-		Size = UDim2.new(0.6, 0, 0.6, 0),
-		Position = UDim2.fromScale(0.2, 0.2),
-		BackgroundColor3 = Library.Theme.Accent1,
-		BackgroundTransparency = 0.97,
-		BorderSizePixel = 0,
+	-- Soft circular bloom in the content area (reads as light, not a square)
+	local bloomClip = New("Frame", {
+		Size = UDim2.new(1, -143, 1, 0),
+		Position = UDim2.fromOffset(143, 0),
+		BackgroundTransparency = 1,
+		ClipsDescendants = true,
 		ZIndex = 2,
 		Parent = animBg,
 	})
-	Util.RegisterTheme(accentOverlay, "BackgroundColor3", "AccentColor")
-	New("UICorner", { CornerRadius = UDim.new(0, 8), Parent = accentOverlay })
-	New("UIGradient", {
-		Rotation = 45,
-		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0),
-			NumberSequenceKeypoint.new(0.5, 0.3),
-			NumberSequenceKeypoint.new(1, 1),
-		}),
-		Parent = accentOverlay,
-	})
+
+	local function makeBloom(sizePx, transparency)
+		local orb = New("Frame", {
+			Size = UDim2.fromOffset(sizePx, sizePx),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.46),
+			BackgroundColor3 = Library.Theme.Accent1,
+			BackgroundTransparency = transparency,
+			BorderSizePixel = 0,
+			ZIndex = 2,
+			Parent = bloomClip,
+		})
+		New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = orb })
+		Util.RegisterTheme(orb, "BackgroundColor3", "AccentColor")
+		return orb
+	end
+	makeBloom(620, 0.965)
+	makeBloom(360, 0.955)
+	makeBloom(180, 0.94)
 
 	Util.AddSkeetGradientBar(winInner, 3)
 	local sidebar = New("Frame", {
@@ -903,23 +908,22 @@ function Library:CreateWindow(cfg)
 		Parent = winInner,
 	})
 
-	-- Subtle accent-tinted glow in top-left corner of content area
+	-- Soft top wash so the content area isn't a hard rectangle of color
 	local contentAccentGlow = New("Frame", {
-		Size = UDim2.new(0.5, 0, 0.4, 0),
+		Size = UDim2.new(1, 0, 0, 90),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundColor3 = Library.Theme.Accent1,
-		BackgroundTransparency = 0.96,
+		BackgroundTransparency = 0.97,
 		BorderSizePixel = 0,
 		ZIndex = 9,
 		Parent = contentHolder,
 	})
-	New("UICorner", { CornerRadius = UDim.new(0, 10), Parent = contentAccentGlow })
 	Util.RegisterTheme(contentAccentGlow, "BackgroundColor3", "AccentColor")
 	New("UIGradient", {
-		Rotation = 135,
+		Rotation = 90,
 		Transparency = NumberSequence.new({
 			NumberSequenceKeypoint.new(0, 0),
-			NumberSequenceKeypoint.new(0.4, 0.6),
+			NumberSequenceKeypoint.new(0.55, 0.55),
 			NumberSequenceKeypoint.new(1, 1),
 		}),
 		Parent = contentAccentGlow,
@@ -1819,7 +1823,7 @@ function Library:CreateWindow(cfg)
 				return bindBtnOuter
 			end
 
-			-- TOGGLE (Modern Gradient Design)
+			-- TOGGLE (pill switch)
 			function Group:AddToggle(tCfg)
 				tCfg = tCfg or {}
 				local tText    = tCfg.Text or "Toggle"
@@ -1827,118 +1831,76 @@ function Library:CreateWindow(cfg)
 				local flag     = tCfg.Flag or tText
 				local callback = tCfg.Callback or function() end
 
+				local TRACK_W, TRACK_H = 34, 16
+				local KNOB = 12
+				local KNOB_PAD = 2
+				local knOff = UDim2.fromOffset(KNOB_PAD, KNOB_PAD)
+				local knOn  = UDim2.fromOffset(TRACK_W - KNOB - KNOB_PAD, KNOB_PAD)
+				local offTrack = Color3.fromRGB(38, 38, 46)
+				local offStroke = Color3.fromRGB(62, 62, 72)
+
 				local row = New("Frame", {
 					Size = UDim2.new(1, 0, 0, 20),
 					BackgroundTransparency = 1,
 					Parent = elemList,
 				})
 
-				-- Register for search
 				table.insert(Library.SearchableControls, {
 					Row = row,
 					SearchText = string.lower(tText),
 					Type = "Toggle"
 				})
 
-				-- Stylish gradient hover background that extends beyond row
 				local hoverBg = New("Frame", {
-					Size = UDim2.new(1, 8, 1, 4),
-					Position = UDim2.fromOffset(-4, -2),
-					BackgroundColor3 = Library.Theme.Accent1,
+					Size = UDim2.new(1, 6, 1, 2),
+					Position = UDim2.fromOffset(-3, -1),
+					BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 					BackgroundTransparency = 1,
 					BorderSizePixel = 0,
 					ZIndex = 0,
 					Parent = row,
 				})
-				Util.RegisterTheme(hoverBg, "BackgroundColor3", "AccentColor")
-				New("UIGradient", {
-					Rotation = 90,
-					Transparency = NumberSequence.new({
-						NumberSequenceKeypoint.new(0, 0.4),
-						NumberSequenceKeypoint.new(0.5, 0),
-						NumberSequenceKeypoint.new(1, 0.6),
-					}),
-					Parent = hoverBg,
-				})
+				New("UICorner", { CornerRadius = UDim.new(0, 4), Parent = hoverBg })
 
-				-- Flat toggle switch (no rounded corners)
 				local toggleTrack = New("Frame", {
-					Size = UDim2.fromOffset(32, 16),
+					Size = UDim2.fromOffset(TRACK_W, TRACK_H),
 					Position = UDim2.fromOffset(0, 2),
-					BackgroundColor3 = state and Library.Theme.Accent1 or Library.Theme.ControlTop,
+					BackgroundColor3 = state and Library.Theme.Accent1 or offTrack,
 					BorderSizePixel = 0,
 					ZIndex = 2,
 					Parent = row,
 				})
-				Util.RegisterTheme(toggleTrack, "BackgroundColor3", state and "AccentColor" or "MainColor")
+				New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = toggleTrack })
+				if state then
+					Util.RegisterTheme(toggleTrack, "BackgroundColor3", "AccentColor")
+				end
 
-				-- Flat gradient on track
-				local trackGradient = New("UIGradient", {
-					Rotation = 135,
-					Color = ColorSequence.new({
-						ColorSequenceKeypoint.new(0.0, state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(200, 200, 200)),
-						ColorSequenceKeypoint.new(0.4, state and Color3.fromRGB(240, 245, 250) or Color3.fromRGB(170, 170, 175)),
-						ColorSequenceKeypoint.new(1.0, state and Color3.fromRGB(200, 215, 230) or Color3.fromRGB(140, 140, 145)),
-					}),
+				local trackStroke = New("UIStroke", {
+					Color = state and Library.Theme.AccentDark or offStroke,
+					Thickness = 1,
+					Transparency = state and 0.35 or 0.15,
 					Parent = toggleTrack,
 				})
 
-				-- Inner shadow effect for depth
-				local trackShadow = New("Frame", {
-					Size = UDim2.new(1, -2, 1, -2),
-					Position = UDim2.fromOffset(1, 1),
-					BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-					BackgroundTransparency = state and 0.85 or 0.7,
-					BorderSizePixel = 0,
-					ZIndex = 3,
-					Parent = toggleTrack,
-				})
-				New("UIGradient", {
-					Rotation = 90,
-					Transparency = NumberSequence.new({
-						NumberSequenceKeypoint.new(0, 0),
-						NumberSequenceKeypoint.new(0.6, 0.5),
-						NumberSequenceKeypoint.new(1, 0.9),
-					}),
-					Parent = trackShadow,
-				})
-
-				-- Flat slider knob (no rounded corners)
 				local toggleKnob = New("Frame", {
-					Size = UDim2.fromOffset(12, 12),
-					Position = state and UDim2.fromOffset(18, 2) or UDim2.fromOffset(2, 2),
-					BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+					Size = UDim2.fromOffset(KNOB, KNOB),
+					Position = state and knOn or knOff,
+					BackgroundColor3 = Color3.fromRGB(248, 248, 252),
 					BorderSizePixel = 0,
 					ZIndex = 5,
 					Parent = toggleTrack,
 				})
-
-				-- Glossy gradient on knob for premium look
-				New("UIGradient", {
-					Rotation = 90,
-					Color = ColorSequence.new({
-						ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 255, 255)),
-						ColorSequenceKeypoint.new(0.5, Color3.fromRGB(245, 245, 250)),
-						ColorSequenceKeypoint.new(1.0, Color3.fromRGB(225, 225, 235)),
-					}),
+				New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = toggleKnob })
+				New("UIStroke", {
+					Color = Color3.fromRGB(0, 0, 0),
+					Thickness = 1,
+					Transparency = 0.72,
 					Parent = toggleKnob,
 				})
-
-				-- Subtle outer glow on knob
-				local knobGlow = New("Frame", {
-					Size = UDim2.new(1, 4, 1, 4),
-					Position = UDim2.fromOffset(-2, -2),
-					BackgroundColor3 = Library.Theme.Accent1,
-					BackgroundTransparency = state and 0.7 or 1,
-					BorderSizePixel = 0,
-					ZIndex = 4,
-					Parent = toggleKnob,
-				})
-				Util.RegisterTheme(knobGlow, "BackgroundColor3", "AccentColor")
 
 				local label = New("TextLabel", {
-					Size = UDim2.new(1, -40, 1, 0),
-					Position = UDim2.fromOffset(38, 0),
+					Size = UDim2.new(1, -42, 1, 0),
+					Position = UDim2.fromOffset(40, 0),
 					BackgroundTransparency = 1,
 					Font = Library.Theme.Font,
 					TextSize = Library.Theme.FontSize,
@@ -1972,41 +1934,15 @@ function Library:CreateWindow(cfg)
 					Library.Flags[flag] = val
 
 					if val then
-						-- Animate track to accent color with gradient
-						Util.Tween(toggleTrack, 0.2, { BackgroundColor3 = Library.Theme.Accent1 })
-						trackGradient.Color = ColorSequence.new({
-							ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 255, 255)),
-							ColorSequenceKeypoint.new(0.4, Color3.fromRGB(240, 245, 250)),
-							ColorSequenceKeypoint.new(1.0, Color3.fromRGB(200, 215, 230)),
-						})
-						Util.Tween(trackShadow, 0.18, { BackgroundTransparency = 0.85 })
-						
-						-- Slide knob to right with bounce
-						Util.Tween(toggleKnob, 0.25, { Position = UDim2.fromOffset(18, 2) }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-						
-						-- Show knob glow
-						Util.Tween(knobGlow, 0.2, { BackgroundTransparency = 0.7 })
-						
-						-- Brighten label
-						Util.Tween(label, 0.16, { TextColor3 = Library.Theme.Text })
+						Util.Tween(toggleTrack, 0.16, { BackgroundColor3 = Library.Theme.Accent1 })
+						Util.Tween(trackStroke, 0.16, { Color = Library.Theme.AccentDark, Transparency = 0.35 })
+						Util.Tween(toggleKnob, 0.2, { Position = knOn }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+						Util.Tween(label, 0.14, { TextColor3 = Library.Theme.Text })
 					else
-						-- Animate track back to inactive color
-						Util.Tween(toggleTrack, 0.18, { BackgroundColor3 = Library.Theme.ControlTop })
-						trackGradient.Color = ColorSequence.new({
-							ColorSequenceKeypoint.new(0.0, Color3.fromRGB(200, 200, 200)),
-							ColorSequenceKeypoint.new(0.4, Color3.fromRGB(170, 170, 175)),
-							ColorSequenceKeypoint.new(1.0, Color3.fromRGB(140, 140, 145)),
-						})
-						Util.Tween(trackShadow, 0.16, { BackgroundTransparency = 0.7 })
-						
-						-- Slide knob to left
-						Util.Tween(toggleKnob, 0.2, { Position = UDim2.fromOffset(2, 2) }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-						
-						-- Hide knob glow
-						Util.Tween(knobGlow, 0.18, { BackgroundTransparency = 1 })
-						
-						-- Dim label
-						Util.Tween(label, 0.16, { TextColor3 = Library.Theme.TextDim })
+						Util.Tween(toggleTrack, 0.16, { BackgroundColor3 = offTrack })
+						Util.Tween(trackStroke, 0.16, { Color = offStroke, Transparency = 0.15 })
+						Util.Tween(toggleKnob, 0.18, { Position = knOff }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+						Util.Tween(label, 0.14, { TextColor3 = Library.Theme.TextDim })
 					end
 
 					Util.PlaySound("toggle")
@@ -2021,13 +1957,11 @@ function Library:CreateWindow(cfg)
 					Parent = row,
 				})
 				clickBtn.MouseEnter:Connect(function()
-					Util.Tween(hoverBg, 0.15, { BackgroundTransparency = 0.92 })
-					Util.Tween(toggleKnob, 0.12, { Size = UDim2.fromOffset(13, 13) })
+					Util.Tween(hoverBg, 0.12, { BackgroundTransparency = 0.94 })
 					Util.PlaySound("hover")
 				end)
 				clickBtn.MouseLeave:Connect(function()
-					Util.Tween(hoverBg, 0.15, { BackgroundTransparency = 1 })
-					Util.Tween(toggleKnob, 0.12, { Size = UDim2.fromOffset(12, 12) })
+					Util.Tween(hoverBg, 0.12, { BackgroundTransparency = 1 })
 				end)
 				clickBtn.MouseButton1Click:Connect(function()
 					Util.PlaySound("click")
