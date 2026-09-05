@@ -235,14 +235,14 @@ function SaveManager:BuildConfigSection(groupbox)
 				refreshList()
 			end
 		end,
-	})
+		})
 
 	groupbox:AddButton({
 		Text = "Load Config",
 		Callback = function()
 			self:Load(selectedConfig)
 		end,
-	})
+		})
 
 	groupbox:AddButton({
 		Text = "Overwrite Selected Config",
@@ -250,8 +250,8 @@ function SaveManager:BuildConfigSection(groupbox)
 			if selectedConfig and selectedConfig ~= "" then
 				self:Save(selectedConfig)
 			end
-		end,
-	})
+			end,
+		})
 
 	groupbox:AddButton({
 		Text = "Delete Config",
@@ -261,15 +261,15 @@ function SaveManager:BuildConfigSection(groupbox)
 				self:Delete(selectedConfig)
 				refreshList()
 			end
-		end,
-	})
+			end,
+		})
 
 	groupbox:AddButton({
 		Text = "Refresh Config List",
 		Callback = function()
 			refreshList()
 		end,
-	})
+		})
 
 	groupbox:AddToggle({
 		Text = "Autoload Selected Config",
@@ -281,8 +281,8 @@ function SaveManager:BuildConfigSection(groupbox)
 			else
 				safeDeleteFile(SettingsManager.Folder .. "/autoload.txt")
 			end
-		end,
-	})
+			end,
+		})
 end
 
 function SaveManager:CheckAutoload()
@@ -427,7 +427,7 @@ function ThemeManager:BuildThemeSection(groupbox)
 			SettingsManager.Library:SetThemeColor("OutlineColor", col)
 		end,
 	})
-	
+
 	-- Menu KeybindPicker
 	groupbox:AddKeybindPicker({
 		Text = "Menu Keybind",
@@ -440,7 +440,7 @@ function ThemeManager:BuildThemeSection(groupbox)
 		end,
 		Flag = "__menu_keybind",
 	})
-	
+
 	-- Additional Action Buttons
 	groupbox:AddButton({
 		Text = "🧹 Unload Script",
@@ -452,7 +452,7 @@ function ThemeManager:BuildThemeSection(groupbox)
 			end
 		end,
 	})
-	
+
 	groupbox:AddButton({
 		Text = "↻ Rejoin Server",
 		Callback = function()
@@ -476,7 +476,7 @@ function ThemeManager:BuildThemeSection(groupbox)
 			end
 		end,
 	})
-	
+
 	groupbox:AddButton({
 		Text = "🗂️ Open Settings Manager",
 		Callback = function()
@@ -490,9 +490,9 @@ function ThemeManager:BuildThemeSection(groupbox)
 					SaveManager:BuildConfigSection(sGroup)
 					ThemeManager:BuildThemeSection(sGroup)
 				end
+			end
 		end,
-		end,
-	})
+		})
 end
 
 return SettingsManager
