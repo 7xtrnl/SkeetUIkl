@@ -177,8 +177,17 @@ function SaveManager:Load(configName)
 
 	for flag, rawVal in pairs(decoded) do
 		local val = decodeValue(rawVal)
-		if SettingsManager.Library and SettingsManager.Library.Flags then
-			SettingsManager.Library.Flags[flag] = val
+		local lib = SettingsManager.Library
+		if lib then
+			local component = lib.FlagRegistry and lib.FlagRegistry[flag]
+			if component and component.Set then
+				-- Push the value through the component so UI state, visuals & callbacks update
+				pcall(function()
+					component:Set(val)
+				end)
+			elseif lib.Flags then
+				lib.Flags[flag] = val
+			end
 		end
 	end
 
@@ -428,14 +437,19 @@ function ThemeManager:BuildThemeSection(groupbox)
 		end,
 	})
 
-	-- Menu KeybindPicker
+	-- Menu Keybind (rebinds the Library.ToggleKey used to open/close the menu)
 	groupbox:AddKeybindPicker({
 		Text = "Menu Keybind",
 		Default = Enum.KeyCode.RightControl,
 		Mode = "Toggle",
 		Callback = function(active)
-			if SettingsManager.Library and SettingsManager.Library.ToggleKey then
-				SettingsManager.Library.ToggleKeyActive = active
+			local lib = SettingsManager.Library
+			if not lib then return end
+			if active then
+				local bound = lib.Flags and lib.Flags["__menu_keybind"]
+				if typeof(bound) == "table" and typeof(bound.Key) == "EnumItem" then
+					lib.ToggleKey = bound.Key
+				end
 			end
 		end,
 		Flag = "__menu_keybind",
@@ -443,56 +457,118 @@ function ThemeManager:BuildThemeSection(groupbox)
 
 	-- Additional Action Buttons
 	groupbox:AddButton({
-		Text = "🧹 Unload Script",
+		Text = "Unload Script",
 		Risky = true,
 		Callback = function()
-			if SettingsManager.Library then
-				Library.Unloaded = true
-				Library:Notify({ Title = "Settings Manager", Text = "Script unloaded successfully!", Duration = 2 })
+			local lib = SettingsManager.Library
+			if lib then
+				lib:Notify({ Title = "Settings Manager", Text = "Script unloaded successfully!", Duration = 2 })
+				task.delay(0.6, function()
+					if lib.Unload and not lib.Unloaded then
+						lib:Unload()
+					end
+				end)
 			end
 		end,
 	})
 
 	groupbox:AddButton({
-		Text = "↻ Rejoin Server",
+		Text = "Copy Server ID",
 		Callback = function()
-			if SettingsManager.Library then
-				SettingsManager.Library:Notify({ Title = "Settings Manager", Text = "Rejoining server...", Duration = 2 })
-			end
-			if getgenv then
-				local genv = getgenv()
-				if genv.syn and genv.syn.request then
-					genv.syn.request({ Type = "RequestRebirth" })
+			local lib = SettingsManager.Library
+			local jobId = game.JobId
+			if jobId == nil or jobId == "" then
+				if lib then
+					lib:Notify({ Title = "Settings Manager", Text = "No server ID available (Studio or reserved server).", Duration = 3 })
 				end
+				return
+			end
+			local copied = false
+			if typeof(setclipboard) == "function" then
+				copied = pcall(setclipboard, jobId)
+			elseif typeof(toclipboard) == "function" then
+				copied = pcall(toclipboard, jobId)
+			end
+			if lib then
+				lib:Notify({
+					Title = "Settings Manager",
+					Text = copied and ("Server ID copied: " .. jobId) or "Clipboard is not supported by this executor.",
+					Duration = 3,
+				})
+			end
+		end,
+	})
+
+	groupbox:AddButton({
+		Text = "Copy Join Link",
+		Callback = function()
+			local lib = SettingsManager.Library
+			local jobId = game.JobId
+			if jobId == nil or jobId == "" then
+				if lib then
+					lib:Notify({ Title = "Settings Manager", Text = "No server ID available (Studio or reserved server).", Duration = 3 })
+				end
+				return
+			end
+			local joinLink = string.format("roblox://experiences/start?placeId=%d&gameInstanceId=%s", game.PlaceId, jobId)
+			local copied = false
+			if typeof(setclipboard) == "function" then
+				copied = pcall(setclipboard, joinLink)
+			elseif typeof(toclipboard) == "function" then
+				copied = pcall(toclipboard, joinLink)
+			end
+			if lib then
+				lib:Notify({
+					Title = "Settings Manager",
+					Text = copied and "Join link copied to clipboard!" or "Clipboard is not supported by this executor.",
+					Duration = 3,
+				})
+			end
+		end,
+	})
+
+	groupbox:AddButton({
+		Text = "Rejoin Server",
+		Callback = function()
+			local lib = SettingsManager.Library
+			if lib then
+				lib:Notify({ Title = "Settings Manager", Text = "Rejoining server...", Duration = 2 })
 			end
 			task.spawn(function()
-				for i = 10, 1, -1 do
-					if Library then Library:Notify({ Title = "Settings Manager", Text = string.format("Rejoining in %d seconds...", i), Duration = 1 }) end
+				for i = 3, 1, -1 do
+					if lib then
+						lib:Notify({ Title = "Settings Manager", Text = string.format("Rejoining in %d second(s)...", i), Duration = 1 })
+					end
 					task.wait(1)
 				end
-				if getrenovate then getrenovate() elseif QueueOnTeleport then QueueOnTeleport() elseif syn then syn.queue_on_teleport("loadstring(game:HttpGet('https://your-repo/script.lua'))()") end
-				game:Restart()
+				local ok, err = pcall(function()
+					game:GetService("TeleportService"):Teleport(game.PlaceId, game:GetService("Players").LocalPlayer)
+				end)
+				if not ok and lib then
+					lib:Notify({ Title = "Settings Manager", Text = "Rejoin failed: " .. tostring(err), Duration = 3 })
+				end
 			end)
-			end
 		end,
 	})
 
 	groupbox:AddButton({
-		Text = "🗂️ Open Settings Manager",
+		Text = "Open Settings Manager",
 		Callback = function()
-			if SettingsManager.Library then
-				SettingsManager.Library:Notify({ Title = "Settings Manager", Text = "Settings manager opened!", Duration = 1 })
+			local lib = SettingsManager.Library
+			if not lib or not lib.CreateWindow then return end
+			if SettingsManager._SettingsWindow and lib.ScreenGui and lib.ScreenGui.Parent then
+				lib:Notify({ Title = "Settings Manager", Text = "Settings manager is already open!", Duration = 2 })
+				return
 			end
-			if SettingsManager.Library and SettingsManager.Library:CreateWindow then
-				local sWindow = SettingsManager.Library:CreateWindow({ Title = "Skeetware Settings", Size = UDim2.fromOffset(520, 420) })
+			lib:Notify({ Title = "Settings Manager", Text = "Settings manager opened!", Duration = 1 })
+			local sWindow = lib:CreateWindow({ Title = "Skeetware Settings", Size = UDim2.fromOffset(520, 420) })
+			SettingsManager._SettingsWindow = sWindow
 				local sTab = sWindow:AddTab("Settings", "⚙️")
 				local sGroup = sTab:AddGroupbox("Settings")
-					SaveManager:BuildConfigSection(sGroup)
-					ThemeManager:BuildThemeSection(sGroup)
-				end
-			end
+				SaveManager:BuildConfigSection(sGroup)
+				ThemeManager:BuildThemeSection(sGroup)
 		end,
-		})
+	})
 end
 
 return SettingsManager
