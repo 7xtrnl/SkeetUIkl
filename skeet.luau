@@ -105,6 +105,7 @@ local Library = {
 	Connections = {},
 	Unloaded = false,
 	OnUnload = nil,
+	Windows = {},
 
 	Theme = {
 		Accent1       = Color3.fromRGB(168, 219, 95),  -- Skeet Green
@@ -1458,6 +1459,11 @@ function Library:CreateWindow(cfg)
 		end
 
 		local function selectTab()
+			-- Re-apply the live menu theme on every tab switch so colors
+			-- always show correctly without needing to re-click the tab
+			for k, col in pairs(Library.CurrentTheme or {}) do
+				Library:SetThemeColor(k, col)
+			end
 			for _, other in ipairs(Window.Tabs) do
 				other.Page.Visible = false
 				Util.Tween(other.Pill, 0.12, { Size = UDim2.new(0, 3, 0, 0) })
@@ -2874,10 +2880,11 @@ function Library:CreateWindow(cfg)
 			-- TEXTBOX
 			function Group:AddTextbox(tbCfg)
 				tbCfg = tbCfg or {}
-				local tbText = tbCfg.Text or "Input"
-				local holder = tbCfg.Placeholder or "Type here..."
+				local tbText = tbCfg.Text or "Textbox"
+				local holder = tbCfg.Placeholder or ""
 				local flag   = tbCfg.Flag or tbText
 				local cb     = tbCfg.Callback or function() end
+				local boxText = tbCfg.Default or ""
 
 				local row = New("Frame", {
 					Size = UDim2.new(1, 0, 0, 38),
@@ -2907,6 +2914,7 @@ function Library:CreateWindow(cfg)
 					TextSize = Library.Theme.FontSize,
 					TextColor3 = Library.Theme.Text,
 					PlaceholderText = holder,
+					Text = boxText,
 					PlaceholderColor3 = Library.Theme.TextDark,
 					TextXAlignment = Enum.TextXAlignment.Left,
 					ClearTextOnFocus = false,
@@ -2955,6 +2963,25 @@ end
 
 function Library:SetThemeColor(colorType, newColor)
 	if not colorType or not newColor then return end
+
+	-- Keep a global snapshot of the 5 public theme keys so we can re-apply
+	-- on tab switches without needing to track each window separately
+	if colorType == "AccentColor" or colorType == "Accent1" then
+		Library.CurrentTheme = Library.CurrentTheme or {}
+		Library.CurrentTheme.AccentColor = newColor
+	elseif colorType == "FontColor" or colorType == "Text" then
+		Library.CurrentTheme = Library.CurrentTheme or {}
+		Library.CurrentTheme.FontColor = newColor
+	elseif colorType == "MainColor" or colorType == "GroupTop" then
+		Library.CurrentTheme = Library.CurrentTheme or {}
+		Library.CurrentTheme.MainColor = newColor
+	elseif colorType == "BackgroundColor" or colorType == "MainTop" then
+		Library.CurrentTheme = Library.CurrentTheme or {}
+		Library.CurrentTheme.BackgroundColor = newColor
+	elseif colorType == "OutlineColor" or colorType == "OuterBorder" then
+		Library.CurrentTheme = Library.CurrentTheme or {}
+		Library.CurrentTheme.OutlineColor = newColor
+	end
 
 	-- Repaint helper: updates the Theme key, every registered instance & signal callbacks
 	local function applyKey(key, col)
