@@ -568,22 +568,52 @@ function ThemeManager:BuildThemeSection(groupbox)
 		end,
 	})
 
-	groupbox:AddButton({
+	-- Open/Close Settings Manager (toggle button that flips its own text)
+	local settingsWindow = nil
+
+	local function setSettingsBtnText(text)
+		if openCloseBtn then
+			local lbl = openCloseBtn:FindFirstChild("ButtonLabel", true)
+			if lbl then lbl.Text = text end
+		end
+	end
+
+	local openCloseBtn = groupbox:AddButton({
 		Text = "Open Settings Manager",
 		Callback = function()
 			local lib = SettingsManager.Library
 			if not lib or not lib.CreateWindow then return end
-			if SettingsManager._SettingsWindow and lib.ScreenGui and lib.ScreenGui.Parent then
-				lib:Notify({ Title = "Settings Manager", Text = "Settings manager is already open!", Duration = 2 })
-				return
+
+			-- Already open → toggle it closed
+			if settingsWindow and settingsWindow.Root then
+				if settingsWindow.Root.Visible then
+					settingsWindow.Root:Destroy()
+					settingsWindow = nil
+					SettingsManager._SettingsWindow = nil
+					setSettingsBtnText("Open Settings Manager")
+					if lib then
+						lib:Notify({ Title = "Settings Manager", Text = "Settings manager closed.", Duration = 2 })
+					end
+					return
+				else
+					-- Hidden by the menu key (Insert) → just bring it back
+					settingsWindow.Root.Visible = true
+					setSettingsBtnText("Close Settings Manager")
+					return
+				end
 			end
-			lib:Notify({ Title = "Settings Manager", Text = "Settings manager opened!", Duration = 1 })
+
+			if lib then
+				lib:Notify({ Title = "Settings Manager", Text = "Settings manager opened!", Duration = 1 })
+			end
 			local sWindow = lib:CreateWindow({ Title = "Skeetware Settings", Size = UDim2.fromOffset(520, 420) })
+			settingsWindow = sWindow
 			SettingsManager._SettingsWindow = sWindow
 			local sTab = sWindow:AddTab("Settings", lib.Icons and lib.Icons.Settings or nil)
 			local sGroup = sTab:AddGroupbox({ Title = "Settings" })
 			SaveManager:BuildConfigSection(sGroup)
 			ThemeManager:BuildThemeSection(sGroup)
+			setSettingsBtnText("Close Settings Manager")
 		end,
 	})
 end
