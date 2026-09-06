@@ -381,6 +381,76 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 --============================================================================--
+-- SNOW OVERLAY (falls over the blurred game while the menu is open)
+--============================================================================--
+local snowLayer = nil
+local snowFlakes = {}
+local SNOW_COUNT = 48
+
+local function initSnow()
+	if snowLayer then return end
+
+	snowLayer = New("Frame", {
+		Name = "SkeetwareSnow",
+		Size = UDim2.fromScale(1, 1),
+		Position = UDim2.fromScale(0, 0),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ZIndex = 6,
+		Visible = false,
+		Parent = screenGui,
+	})
+
+	for i = 1, SNOW_COUNT do
+		local size = 2 + ((i * 37) % 3)
+		local flake = New("Frame", {
+			Size = UDim2.fromOffset(size, size),
+			Position = UDim2.fromOffset(0, 0),
+			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+			BackgroundTransparency = 0.35 + ((i * 53) % 100) / 200,
+			BorderSizePixel = 0,
+			ZIndex = 1,
+			Parent = snowLayer,
+		})
+		New("UICorner", { CornerRadius = UDim.new(0.5, 0), Parent = flake })
+
+		snowFlakes[i] = {
+			Frame = flake,
+			X = math.random() * 1000,
+			Y = math.random() * 800,
+			Speed = 24 + math.random() * 42,
+			SwayAmp = 6 + math.random() * 12,
+			SwayFreq = 0.4 + math.random() * 1.2,
+			Phase = math.random() * math.pi * 2,
+			Drift = 3 + math.random() * 8,
+		}
+	end
+
+	table.insert(Library.Connections, RunService.RenderStepped:Connect(function(dt)
+		if not snowLayer or not snowLayer.Visible then return end
+		local size = screenGui.AbsoluteSize
+		local t = tick()
+		for i = 1, #snowFlakes do
+			local f = snowFlakes[i]
+			f.Y = f.Y + f.Speed * dt
+			f.X = f.X + (math.sin(t * f.SwayFreq + f.Phase) * f.SwayAmp + f.Drift) * dt
+			if f.Y > size.Y + 8 then
+				f.Y = -8
+				f.X = math.random() * size.X
+			end
+			if f.X < -8 then
+				f.X = size.X + 8
+			elseif f.X > size.X + 8 then
+				f.X = -8
+			end
+			f.Frame.Position = UDim2.fromOffset(f.X, f.Y)
+		end
+	end))
+end
+
+initSnow()
+
+--============================================================================--
 -- WATERMARK HUD
 --============================================================================--
 function Library:CreateWatermark(customTitle)
@@ -946,6 +1016,7 @@ function Library:CreateWindow(cfg)
 	table.insert(Library.Connections, UserInputService.InputBegan:Connect(function(input, gp)
 		if Library.Unloaded then return end
 		if not gp and input.KeyCode == Library.ToggleKey then
+			if not winOuter or not winOuter.Parent then return end
 			Library.Open = not Library.Open
 			if Library.Open then
 				-- Show blur overlay
@@ -956,6 +1027,7 @@ function Library:CreateWindow(cfg)
 					blurEffect.Size = 0
 					Util.Tween(blurEffect, 0.3, { Size = 14 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 				end
+				if snowLayer then snowLayer.Visible = true end
 
 				winOuter.Visible = true
 				winOuter.Size = UDim2.fromOffset(winSize.X.Offset - 18, winSize.Y.Offset - 18)
@@ -973,6 +1045,7 @@ function Library:CreateWindow(cfg)
 					winOuter.Visible = false
 					winOuter.Size = winSize
 					blurOverlay.Visible = false
+					if snowLayer then snowLayer.Visible = false end
 				end)
 				Util.PlaySound("close")
 			end
@@ -1133,28 +1206,6 @@ function Library:CreateWindow(cfg)
 			Parent = tabBtnInner,
 		})
 		Util.RegisterTheme(activePill, "BackgroundColor3", "AccentColor")
-
-		local tabCorner = New("Frame", {
-			Size = UDim2.fromOffset(4, 4),
-			Position = UDim2.fromOffset(1, 1),
-			BackgroundColor3 = Library.Theme.Accent1,
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			ZIndex = 14,
-			Parent = tabBtnInner,
-		})
-		Util.RegisterTheme(tabCorner, "BackgroundColor3", "AccentColor")
-
-		local topEdge = New("Frame", {
-			Size = UDim2.new(1, 0, 0, 1),
-			Position = UDim2.fromOffset(1, 1),
-			BackgroundColor3 = Library.Theme.Accent1,
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			ZIndex = 14,
-			Parent = tabBtnInner,
-		})
-		Util.RegisterTheme(topEdge, "BackgroundColor3", "AccentColor")
 
 		local hasIcon = (iconAsset ~= nil and typeof(iconAsset) == "string")
 		local tabIcon = nil
@@ -1413,8 +1464,6 @@ function Library:CreateWindow(cfg)
 				Util.Tween(other.Label, 0.15, { TextColor3 = Library.Theme.TextDim })
 				if other.Icon then Util.Tween(other.Icon, 0.15, { ImageColor3 = Library.Theme.TextDim }) end
 				Util.Tween(other.Inner, 0.15, { BackgroundColor3 = Library.Theme.ControlTop })
-				if other.Corner then Util.Tween(other.Corner, 0.12, { BackgroundTransparency = 1 }) end
-				if other.TopEdge then Util.Tween(other.TopEdge, 0.12, { BackgroundTransparency = 1 }) end
 			end
 			tabPage.Position = UDim2.fromOffset(0, 6)
 			tabPage.Visible = true
@@ -1422,8 +1471,6 @@ function Library:CreateWindow(cfg)
 			Util.Tween(tabLabel, 0.18, { TextColor3 = Library.Theme.Text })
 			if tabIcon then Util.Tween(tabIcon, 0.18, { ImageColor3 = Library.Theme.Accent1 }) end
 			Util.Tween(tabBtnInner, 0.18, { BackgroundColor3 = Library.Theme.GroupTop })
-			Util.Tween(tabCorner, 0.18, { BackgroundTransparency = 0 })
-			Util.Tween(topEdge, 0.18, { BackgroundTransparency = 0 })
 			Util.Tween(tabPage, 0.18, { Position = UDim2.fromOffset(0, 0) }, Enum.EasingStyle.Quart)
 		end
 
@@ -1451,8 +1498,6 @@ function Library:CreateWindow(cfg)
 		Tab.Label = tabLabel
 		Tab.Icon  = tabIcon
 		Tab.Pill  = activePill
-		Tab.Corner = tabCorner
-		Tab.TopEdge = topEdge
 		table.insert(Window.Tabs, Tab)
 
 		if #Window.Tabs == 1 then selectTab() end
@@ -2797,6 +2842,7 @@ function Library:CreateWindow(cfg)
 				end
 
 				local btnLabel = New("TextLabel", {
+					Name = "ButtonLabel",
 					Size = UDim2.new(1, hasIcon and -24 or 0, 1, 0),
 					Position = UDim2.fromOffset(hasIcon and 24 or 0, 0),
 					BackgroundTransparency = 1,
@@ -2929,6 +2975,21 @@ function Library:CreateWindow(cfg)
 		return Tab
 	end
 
+	-- Menu starts open → dim/blur the game behind it and start the snowfall
+	if Library.Open then
+		if blurOverlay then
+			blurOverlay.Visible = true
+			blurOverlay.BackgroundTransparency = 0.55
+		end
+		if blurEffect then
+			blurEffect.Size = 14
+		end
+		if snowLayer then
+			snowLayer.Visible = true
+		end
+	end
+
+	Window.Root = winOuter
 	return Window
 end
 
