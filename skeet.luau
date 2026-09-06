@@ -106,6 +106,8 @@ local Library = {
 	Unloaded = false,
 	OnUnload = nil,
 	Windows = {},
+	Windows = {},
+	Build      = "5.2.1",
 
 	Theme = {
 		Accent1       = Color3.fromRGB(168, 219, 95),  -- Skeet Green
@@ -3135,6 +3137,10 @@ function Library:Unload()
 			screenGui:Destroy()
 		end)
 	end
+print(("[Skeetware] build %s loaded | searchbar = 'Search...' | %d registered theme keys"):format(
+	Library.Build or "?", (function() local n = 0 for _ in pairs(Library.ThemeSignals) do n = n + 1 end return n end)()))
+
+return Library
 end
 
 return Library
