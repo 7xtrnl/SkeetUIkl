@@ -192,6 +192,13 @@ function Util.RegisterFlag(flag, component)
 	return component
 end
 
+-- Registers a callback that fires whenever a theme key is repainted
+function Util.OnTheme(key, cb)
+	if not key or typeof(cb) ~= "function" then return end
+	Library.ThemeSignals[key] = Library.ThemeSignals[key] or {}
+	table.insert(Library.ThemeSignals[key], cb)
+end
+
 function Util.Tween(inst, dur, props, style, dir)
 	local t = TweenService:Create(inst, TweenInfo.new(dur or 0.15, style or Enum.EasingStyle.Quart, dir or Enum.EasingDirection.Out), props)
 	t:Play()
@@ -936,6 +943,7 @@ function Library:CreateWindow(cfg)
 		ZIndex = 12,
 		Parent = searchInner,
 	})
+	Util.OnTheme("TextDim", function(col) searchIcon.ImageColor3 = col end)
 
 	local searchInput = New("TextBox", {
 		Size = UDim2.new(1, -26, 1, 0),
@@ -944,7 +952,7 @@ function Library:CreateWindow(cfg)
 		Font = Library.Theme.Font,
 		TextSize = Library.Theme.FontSize - 1,
 		TextColor3 = Library.Theme.Text,
-		PlaceholderText = "Search features...",
+		PlaceholderText = "Search...",
 		PlaceholderColor3 = Library.Theme.TextDark,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ClearTextOnFocus = false,
@@ -1243,6 +1251,28 @@ function Library:CreateWindow(cfg)
 			Visible = false,
 			Parent = contentHolder,
 		})
+
+		-- State-aware live repaint: the ACTIVE tab icon follows the accent and
+		-- inactive tabs follow the dim tone. Tab tweens capture the color at
+		-- click time, so these signals keep them correct when the theme changes.
+		Util.OnTheme("AccentColor", function(col)
+			if tabPage.Visible and tabIcon then
+				tabIcon.ImageColor3 = col
+			end
+		end)
+		Util.OnTheme("TextDim", function(col)
+			if not tabPage.Visible then
+				if tabLabel then tabLabel.TextColor3 = col end
+				if tabIcon then tabIcon.ImageColor3 = col end
+			end
+		end)
+		Util.OnTheme("FontColor", function(col)
+			if tabPage.Visible then
+				tabLabel.TextColor3 = col
+			else
+				tabLabel.TextColor3 = Library.Theme.TextDim
+			end
+		end)
 
 		local leftCol = New("ScrollingFrame", {
 			Size = UDim2.new(0.5, -6, 1, 0),
@@ -1881,6 +1911,13 @@ function Library:CreateWindow(cfg)
 				})
 				Util.RegisterTheme(bindLabel, "TextColor3", "FontColor")
 
+				-- Active/armed keybind text follows the accent live
+				Util.OnTheme("AccentColor", function(col)
+					if onToggleVal and onToggleVal() then
+						bindLabel.TextColor3 = col
+					end
+				end)
+
 				local clickArea = New("TextButton", {
 					Size = UDim2.fromScale(1, 1),
 					BackgroundTransparency = 1,
@@ -2093,6 +2130,22 @@ function Library:CreateWindow(cfg)
 				})
 
 				local Toggle = { Value = state }
+
+			-- State-aware live repaint: ON toggles follow the accent, OFF stay
+			-- dark. The hard-border inner is registered to MainColor, so these
+			-- signals override that when the theme changes.
+			Util.OnTheme("AccentColor", function(col)
+				if Toggle.Value then boxInner.BackgroundColor3 = col end
+			end)
+			Util.OnTheme("MainColor", function(col)
+				boxInner.BackgroundColor3 = Toggle.Value and Library.Theme.Accent1 or offFill
+			end)
+			Util.OnTheme("FontColor", function(col)
+				label.TextColor3 = Toggle.Value and col or Library.Theme.TextDim
+			end)
+			Util.OnTheme("TextDim", function(col)
+				if not Toggle.Value then label.TextColor3 = col end
+			end)
 
 				local function setToggle(val)
 					Toggle.Value = val
@@ -2576,6 +2629,14 @@ function Library:CreateWindow(cfg)
 				local blocker  = nil
 				local isOpen   = false
 
+			-- Keep the dropdown arrow in sync with the accent when it's open
+			Util.OnTheme("AccentColor", function(col)
+				if isOpen then arrow.ImageColor3 = col end
+			end)
+			Util.OnTheme("TextDim", function(col)
+				if not isOpen then arrow.ImageColor3 = col end
+			end)
+
 				local function closeDropdown()
 					if not isOpen then return end
 					isOpen = false
@@ -2880,7 +2941,7 @@ function Library:CreateWindow(cfg)
 			-- TEXTBOX
 			function Group:AddTextbox(tbCfg)
 				tbCfg = tbCfg or {}
-				local tbText = tbCfg.Text or "Textbox"
+				local tbText = tbCfg.Text or tbCfg.Placeholder or ""
 				local holder = tbCfg.Placeholder or ""
 				local flag   = tbCfg.Flag or tbText
 				local cb     = tbCfg.Callback or function() end
@@ -3016,6 +3077,8 @@ function Library:SetThemeColor(colorType, newColor)
 		applyKey("FontColor", newColor)
 		applyKey("TextDim", shade(newColor, 0.69))
 		applyKey("TextDark", shade(newColor, 0.44))
+		-- Keep the old "Text" alias in sync so tweens use the live color
+		Library.Theme.Text = newColor
 	elseif colorType == "MainColor" or colorType == "GroupTop" then
 		applyKey("MainColor", newColor)
 		applyKey("GroupTop", newColor)
