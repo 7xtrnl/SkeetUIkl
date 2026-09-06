@@ -570,6 +570,7 @@ function ThemeManager:BuildThemeSection(groupbox)
 
 	-- Open/Close Settings Manager (toggle button that flips its own text)
 	local settingsWindow = nil
+	local openCloseBtn = nil
 
 	local function setSettingsBtnText(text)
 		if openCloseBtn then
@@ -578,7 +579,7 @@ function ThemeManager:BuildThemeSection(groupbox)
 		end
 	end
 
-	local openCloseBtn = groupbox:AddButton({
+	openCloseBtn = groupbox:AddButton({
 		Text = "Open Settings Manager",
 		Callback = function()
 			local lib = SettingsManager.Library
