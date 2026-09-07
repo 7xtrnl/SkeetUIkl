@@ -1627,19 +1627,11 @@ function Library:CreateWindow(cfg)
 				Library:SetThemeColor(k, col)
 			end
 			
-			-- Enhanced tab transition with slide effects
+			-- Hide every other tab page immediately (no blocking :Wait()).
+			-- A blocking tween inside a UI input callback deadlocks/errors
+			-- and is what broke tab switching.
 			for _, other in ipairs(Window.Tabs) do
-				if other.Page ~= tabPage and other.Page.Visible then
-					-- Slide out old tabs
-					Util.Tween(other.Page, 0.15, { 
-						Position = UDim2.fromOffset(0, -10)
-					}, Enum.EasingStyle.Quart, Enum.EasingDirection.In):Wait()
-					other.Page.Visible = false
-					other.Page.Position = UDim2.fromOffset(0, 0)
-				else
-					other.Page.Visible = false
-				end
-				
+				other.Page.Visible = false
 				Util.Tween(other.Pill, 0.12, { Size = UDim2.new(0, 3, 0, 0) })
 				Util.Tween(other.Label, 0.15, { TextColor3 = Library.Theme.TextDim })
 				if other.Icon then Util.Tween(other.Icon, 0.15, { ImageColor3 = Library.Theme.TextDim }) end
