@@ -106,8 +106,8 @@ local Library = {
 	Unloaded = false,
 	OnUnload = nil,
 	Windows = {},
-	Windows = {},
 	Build      = "5.2.1",
+	ParticleEffects = {},
 
 	Theme = {
 		Accent1       = Color3.fromRGB(168, 219, 95),  -- Skeet Green
@@ -389,6 +389,102 @@ UserInputService.InputChanged:Connect(function(input)
 		tooltipRef.Outer.Position = UDim2.fromOffset(m.X + 14, m.Y + 18)
 	end
 end)
+
+--============================================================================--
+-- PARTICLE EFFECTS SYSTEM
+--============================================================================--
+function Library:CreateParticleEffect(uiElement, color, count, duration)
+	if Library.Unloaded then return end
+	
+	local particleContainer = New("Frame", {
+		Name = "ParticleContainer",
+		Size = UDim2.fromScale(1, 1),
+		Position = UDim2.fromScale(0, 0),
+		BackgroundTransparency = 1,
+		Parent = screenGui,
+	})
+	
+	local particles = {}
+	count = count or 12
+	duration = duration or 0.8
+	
+	-- Get the position relative to screenGui
+	local elementPos = uiElement.AbsolutePosition
+	local elementSize = uiElement.AbsoluteSize
+	local centerX = elementPos.X + elementSize.X / 2
+	local centerY = elementPos.Y + elementSize.Y / 2
+	
+	for i = 1, count do
+		local angle = (i / count) * math.pi * 2
+		local distance = 20 + math.random() * 30
+		local particle = New("Frame", {
+			Size = UDim2.fromOffset(3 + math.random() * 3, 3 + math.random() * 3),
+			Position = UDim2.fromOffset(centerX, centerY),
+			BackgroundColor3 = color or Library.Theme.Accent1,
+			BackgroundTransparency = 0,
+			BorderSizePixel = 0,
+			Rotation = math.random() * 360,
+			Parent = particleContainer,
+		})
+		New("UICorner", { CornerRadius = UDim.new(0.5, 0), Parent = particle })
+		
+		local targetX = centerX + math.cos(angle) * distance
+		local targetY = centerY + math.sin(angle) * distance
+		
+		table.insert(particles, {
+			Frame = particle,
+			TargetX = targetX,
+			TargetY = targetY,
+			StartX = centerX,
+			StartY = centerY
+		})
+	end
+	
+	local startTime = tick()
+	local particleConn
+	particleConn = RunService.RenderStepped:Connect(function()
+		if Library.Unloaded or not particleContainer.Parent then
+			if particleContainer.Parent then particleContainer:Destroy() end
+			if particleConn then particleConn:Disconnect() end
+			return
+		end
+		
+		local elapsed = tick() - startTime
+		local progress = math.min(elapsed / duration, 1)
+		
+		if progress >= 1 then
+			particleContainer:Destroy()
+			if particleConn then particleConn:Disconnect() end
+			return
+		end
+		
+		for _, particle in ipairs(particles) do
+			local currentX = particle.Frame.Position.X.Offset
+			local currentY = particle.Frame.Position.Y.Offset
+			
+			-- Smooth interpolation
+			local t = progress
+			local newX = particle.StartX + (particle.TargetX - particle.StartX) * t
+			local newY = particle.StartY + (particle.TargetY - particle.StartY) * t
+			
+			particle.Frame.Position = UDim2.fromOffset(newX, newY)
+			particle.Frame.BackgroundTransparency = progress * 0.8
+			particle.Frame.Size = UDim2.fromOffset(
+				particle.Frame.Size.X.Offset * (1 - progress * 0.5),
+				particle.Frame.Size.Y.Offset * (1 - progress * 0.5)
+			)
+		end
+	end)
+	table.insert(Library.Connections, particleConn)
+end
+
+function Library:CreateSuccessBurst(uiElement)
+	Library:CreateParticleEffect(uiElement, Library.Theme.Accent1, 16, 1.0)
+end
+
+function Library:CreateWarningBurst(uiElement)
+	Library:CreateParticleEffect(uiElement, Library.Theme.Risky, 12, 0.8)
+end
 
 --============================================================================--
 -- SNOW OVERLAY (falls over the blurred game while the menu is open)
@@ -768,7 +864,7 @@ function Library:CreateWindow(cfg)
 	winOuter.AnchorPoint = Vector2.new(0.5, 0.5)
 	winOuter.ZIndex = 10
 
-	-- Full-bleed ambient wash (no boxed overlay)
+	-- Full-bleed ambient wash with animated gradient
 	local animBg = New("Frame", {
 		Size = UDim2.fromScale(1, 1),
 		Position = UDim2.fromOffset(0, 0),
@@ -788,6 +884,40 @@ function Library:CreateWindow(cfg)
 		}),
 		Parent = animBg,
 	})
+
+	-- Animated background gradient that slowly shifts colors
+	local bgAnimationTime = 0
+	table.insert(Library.Connections, RunService.RenderStepped:Connect(function(dt)
+		if Library.Unloaded then return end
+		bgAnimationTime = bgAnimationTime + dt * 0.3 -- Slow animation speed
+		
+		-- Create subtle color shifts based on time
+		local colorShift = math.sin(bgAnimationTime) * 0.05
+		local topColor = Color3.fromRGB(
+			math.clamp(30 + colorShift * 20, 20, 40),
+			math.clamp(30 + colorShift * 15, 20, 35),
+			math.clamp(36 + colorShift * 10, 25, 45)
+		)
+		local midColor = Color3.fromRGB(
+			math.clamp(22 + colorShift * 15, 15, 30),
+			math.clamp(22 + colorShift * 10, 15, 28),
+			math.clamp(26 + colorShift * 8, 18, 32)
+		)
+		local bottomColor = Color3.fromRGB(
+			math.clamp(14 + colorShift * 10, 10, 20),
+			math.clamp(14 + colorShift * 8, 10, 20),
+			math.clamp(17 + colorShift * 5, 12, 22)
+		)
+		
+		bgGradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0.0, topColor),
+			ColorSequenceKeypoint.new(0.45, midColor),
+			ColorSequenceKeypoint.new(1.0, bottomColor),
+		})
+		
+		-- Slowly rotate the gradient for extra movement
+		bgGradient.Rotation = 90 + math.sin(bgAnimationTime * 0.5) * 15
+	end))
 
 	Util.AddSkeetGradientBar(winInner, 3)
 	local sidebar = New("Frame", {
@@ -1496,20 +1626,37 @@ function Library:CreateWindow(cfg)
 			for k, col in pairs(Library.CurrentTheme or {}) do
 				Library:SetThemeColor(k, col)
 			end
+			
+			-- Enhanced tab transition with slide effects
 			for _, other in ipairs(Window.Tabs) do
-				other.Page.Visible = false
+				if other.Page ~= tabPage and other.Page.Visible then
+					-- Slide out old tabs
+					Util.Tween(other.Page, 0.15, { 
+						Position = UDim2.fromOffset(0, -10)
+					}, Enum.EasingStyle.Quart, Enum.EasingDirection.In):Wait()
+					other.Page.Visible = false
+					other.Page.Position = UDim2.fromOffset(0, 0)
+				else
+					other.Page.Visible = false
+				end
+				
 				Util.Tween(other.Pill, 0.12, { Size = UDim2.new(0, 3, 0, 0) })
 				Util.Tween(other.Label, 0.15, { TextColor3 = Library.Theme.TextDim })
 				if other.Icon then Util.Tween(other.Icon, 0.15, { ImageColor3 = Library.Theme.TextDim }) end
 				Util.Tween(other.Inner, 0.15, { BackgroundColor3 = Library.Theme.ControlTop })
 			end
-			tabPage.Position = UDim2.fromOffset(0, 6)
+			
+			-- Slide in new tab
+			tabPage.Position = UDim2.fromOffset(0, 10)
 			tabPage.Visible = true
+			Util.Tween(tabPage, 0.2, { 
+				Position = UDim2.fromOffset(0, 0)
+			}, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+			
 			Util.Tween(activePill, 0.18, { Size = UDim2.new(0, 3, 0.65, 0) }, Enum.EasingStyle.Quart)
 			Util.Tween(tabLabel, 0.18, { TextColor3 = Library.Theme.Text })
 			if tabIcon then Util.Tween(tabIcon, 0.18, { ImageColor3 = Library.Theme.Accent1 }) end
 			Util.Tween(tabBtnInner, 0.18, { BackgroundColor3 = Library.Theme.GroupTop })
-			Util.Tween(tabPage, 0.18, { Position = UDim2.fromOffset(0, 0) }, Enum.EasingStyle.Quart)
 		end
 
 		tabBtnInner.InputBegan:Connect(function(input)
@@ -2156,6 +2303,10 @@ function Library:CreateWindow(cfg)
 					if val then
 						Util.Tween(boxInner, 0.1, { BackgroundColor3 = Library.Theme.Accent1 })
 						Util.Tween(label, 0.1, { TextColor3 = Library.Theme.Text })
+						-- Subtle particle feedback when switching a toggle ON
+						task.delay(0.06, function()
+							if boxOuter and boxOuter.Parent then Library:CreateSuccessBurst(boxOuter) end
+						end)
 					else
 						Util.Tween(boxInner, 0.1, { BackgroundColor3 = offFill })
 						Util.Tween(label, 0.1, { TextColor3 = Library.Theme.TextDim })
@@ -2173,11 +2324,15 @@ function Library:CreateWindow(cfg)
 					Parent = row,
 				})
 				clickBtn.MouseEnter:Connect(function()
-					Util.Tween(hoverBg, 0.12, { BackgroundTransparency = 0.94 })
+					-- Enhanced hover effect with subtle glow
+					Util.Tween(hoverBg, 0.12, { BackgroundTransparency = 0.92 })
+					Util.Tween(boxOuter, 0.12, { Size = UDim2.fromOffset(BOX + 1, BOX + 1) }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 					Util.PlaySound("hover")
 				end)
 				clickBtn.MouseLeave:Connect(function()
+					-- Return to normal state
 					Util.Tween(hoverBg, 0.12, { BackgroundTransparency = 1 })
+					Util.Tween(boxOuter, 0.12, { Size = UDim2.fromOffset(BOX, BOX) }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 				end)
 				clickBtn.MouseButton1Click:Connect(function()
 					Util.PlaySound("click")
@@ -2747,6 +2902,10 @@ function Library:CreateWindow(cfg)
 							end)
 
 							itemBtn.MouseButton1Click:Connect(function()
+								-- Subtle particle feedback on dropdown selection
+								task.delay(0.04, function()
+									if itemBtn and itemBtn.Parent then Library:CreateSuccessBurst(itemBtn) end
+								end)
 								if isMulti then
 									multiSelected[item] = not multiSelected[item]
 									local sel = multiSelected[item]
@@ -2893,14 +3052,18 @@ function Library:CreateWindow(cfg)
 				})
 
 				clickBtn.MouseEnter:Connect(function()
+					-- Enhanced hover effect with subtle glow
 					Util.Tween(btnInner, 0.1, { BackgroundColor3 = isRisky and Library.Theme.Risky or Library.Theme.ControlHover })
+					Util.Tween(btnOuter, 0.1, { Size = UDim2.new(1, 2, 0, 26), Position = UDim2.new(0, -1, 0, -1) }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 					Util.PlaySound("hover")
 				end)
 				clickBtn.MouseLeave:Connect(function()
+					-- Return to normal state
 					Util.Tween(btnInner, 0.1, { BackgroundColor3 = topCol })
+					Util.Tween(btnOuter, 0.1, { Size = UDim2.new(1, 0, 0, 24), Position = UDim2.new(0, 0, 0, 0) }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 				end)
 				clickBtn.MouseButton1Down:Connect(function()
-					Util.Tween(btnInner, 0.06, { Size = UDim2.new(1, -4, 1, -2), Position = UDim2.fromOffset(2, 1) })
+					Util.Tween(btnInner, 0.06, { Size = UDim2.new(1, -3, 1, -1), Position = UDim2.fromOffset(1.5, 0.5) })
 				end)
 				clickBtn.MouseButton1Up:Connect(function()
 					Util.Tween(btnInner, 0.1, { Size = UDim2.new(1, -2, 1, -2), Position = UDim2.fromOffset(1, 1) })
@@ -2933,6 +3096,13 @@ function Library:CreateWindow(cfg)
 					})
 					local sweep = Util.Tween(ripple, 0.3, { Size = UDim2.new(1.6, 0, 1, 0), BackgroundTransparency = 1 }, Enum.EasingStyle.Quad)
 					sweep.Completed:Connect(function() if ripple.Parent then ripple:Destroy() end end)
+
+					-- Subtle particle burst on the button
+					local pColor = isRisky and Library.Theme.Risky or Library.Theme.Accent1
+					task.delay(0.05, function()
+						if btnOuter and btnOuter.Parent then Library:CreateParticleEffect(btnOuter, pColor, 8, 0.6) end
+					end)
+
 					cb()
 				end)
 				hookTooltip(clickBtn, bCfg.Description)
