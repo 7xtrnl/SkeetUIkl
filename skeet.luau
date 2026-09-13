@@ -197,27 +197,45 @@ local Util = {}
 
 function Util.Create(class, props, children)
 	local inst = Instance.new(class)
+	local isTextClass = (class == "TextLabel" or class == "TextButton" or class == "TextBox")
+	local hasCustomFont = (typeof(TahomaFont) == "Font")
+	local fontWasSet = false
+
 	for k, v in pairs(props or {}) do
-		if k ~= "Parent" then inst[k] = v end
+		if k ~= "Parent" then
+			-- Redirect deprecated "Font" key → "FontFace" when using a custom Font object
+			if k == "Font" and hasCustomFont then
+				inst.FontFace = TahomaFont
+				fontWasSet = true
+			else
+				inst[k] = v
+			end
+		end
 	end
+
 	for _, child in ipairs(children or {}) do child.Parent = inst end
 	if props and props.Parent then inst.Parent = props.Parent end
-	-- Auto-apply premium text styling for any TextLabel or TextButton
-	if class == "TextLabel" or class == "TextButton" then
-		if typeof(TahomaFont) == "Font" then
+
+	-- Auto-apply TahomaXP custom font + gradient for ALL text elements
+	if isTextClass then
+		if hasCustomFont and not fontWasSet then
 			inst.FontFace = TahomaFont
 		end
-		inst.TextSize = 12
-		local grad = Instance.new("UIGradient")
-		grad.Rotation = 90
-		grad.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(163, 163, 163))
-		})
-		grad.Parent = inst
+		-- Default text size when using the custom font
+		if not (props and props.TextSize) then
+			inst.TextSize = 12
+		end
+		-- Subtle white-to-gray gradient for polished text appearance
+		if class ~= "TextBox" then
+			local grad = Instance.new("UIGradient")
+			grad.Rotation = 90
+			grad.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(163, 163, 163))
+			})
+			grad.Parent = inst
+		end
 	end
-
-
 
 	return inst
 end
@@ -1096,8 +1114,8 @@ function Library:CreateWindow(cfg)
 	})
 
 	local brandIcon = New("ImageLabel", {
-		Size = UDim2.fromOffset(32, 32),
-		Position = UDim2.fromOffset(14, 14),
+		Size = UDim2.fromOffset(38, 38),
+		Position = UDim2.fromOffset(10, 11),
 		BackgroundTransparency = 1,
 		Image = Library.Icons.Shield,
 		ImageColor3 = Library.Theme.Accent1,
@@ -1107,8 +1125,8 @@ function Library:CreateWindow(cfg)
 	Util.RegisterTheme(brandIcon, "ImageColor3", "AccentColor")
 
 	New("TextLabel", {
-		Size = UDim2.new(1, -56, 0, 20),
-		Position = UDim2.fromOffset(52, 20),
+		Size = UDim2.new(1, -58, 0, 20),
+		Position = UDim2.fromOffset(54, 15),
 		BackgroundTransparency = 1,
 		Font = Library.Theme.FontBold,
 		TextSize = Library.Theme.FontSize + 2,
@@ -1120,8 +1138,8 @@ function Library:CreateWindow(cfg)
 	})
 
 	New("TextLabel", {
-		Size = UDim2.new(1, -56, 0, 16),
-		Position = UDim2.fromOffset(52, 40),
+		Size = UDim2.new(1, -58, 0, 16),
+		Position = UDim2.fromOffset(54, 34),
 		BackgroundTransparency = 1,
 		Font = Library.Theme.Font,
 		TextSize = Library.Theme.FontSize - 1,
