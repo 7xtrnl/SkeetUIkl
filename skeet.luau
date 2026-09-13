@@ -166,7 +166,7 @@ local Library = {
 		Eye       = "rbxassetid://10723346959",
 		Users     = "rbxassetid://10747373426",
 		User      = "rbxassetid://10747373176",
-		Shield    = "rbxassetid://10734951847",
+		Shield    = "rbxassetid://140699768238308",
 		Sliders   = "rbxassetid://10734963400",
 		Settings  = "rbxassetid://10734950309",
 		Palette   = "rbxassetid://10734910430",
@@ -210,10 +210,10 @@ function Util.Create(class, props, children)
 		inst.TextSize = 12
 		local grad = Instance.new("UIGradient")
 		grad.Rotation = 90
-		grad.Color = ColorSequence.new(
+		grad.Color = ColorSequence.new({
 			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
 			ColorSequenceKeypoint.new(1, Color3.fromRGB(163, 163, 163))
-		)
+		})
 		grad.Parent = inst
 	end
 
