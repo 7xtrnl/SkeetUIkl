@@ -88,6 +88,26 @@ blurVignette.Transparency = NumberSequence.new({
 })
 blurVignette.Parent = blurOverlay
 
+-- TahomaXP Custom Font (same as juanitahaxx Library)
+local TahomaFont = nil
+pcall(function()
+	if isfile and writefile and getcustomasset and HttpService then
+		local fontId = "juanitaaaaaaa/Assets/TahomaXP.ttf"
+		if not isfile(fontId) then
+			if not isfolder("juanitaaaaaaa") then makefolder("juanitaaaaaaa") end
+			if not isfolder("juanitaaaaaaa/Assets") then makefolder("juanitaaaaaaa/Assets") end
+			writefile(fontId, game:HttpGet("https://github.com/sametexe001/luas/raw/refs/heads/main/fonts/windows-xp-tahoma.ttf"))
+		end
+		local fontJson = HttpService:JSONEncode({
+			name = "TahomaXP",
+			faces = {{ name = "TahomaXP", weight = 400, style = "Regular", assetId = getcustomasset(fontId) }}
+		})
+		local fontFile = "juanitaaaaaaa/Assets/TahomaXP.font"
+		writefile(fontFile, fontJson)
+		TahomaFont = Font.new(getcustomasset(fontFile))
+	end
+end)
+
 local Library = {
 	Version   = "5.0.0",
 	Open      = true,
@@ -127,9 +147,17 @@ local Library = {
 		TextDark      = Color3.fromRGB(105, 105, 120),
 		Risky         = Color3.fromRGB(245, 85, 85),
 		RiskyDark     = Color3.fromRGB(180, 50, 50),
-		Font          = Enum.Font.GothamMedium,
-		FontBold      = Enum.Font.GothamBold,
-		FontSize      = 12,
+		Font          = TahomaFont or Enum.Font.GothamMedium,
+		FontBold      = TahomaFont or Enum.Font.GothamBold,
+		FontSize      = TahomaFont and 13 or 12,
+	},
+
+	-- Animation timings (inspired by juanitahaxx Library)
+	Animation = {
+		Tab       = { Time = 0.7,  Style = Enum.EasingStyle.Exponential, Dir = Enum.EasingDirection.Out },
+		Panel     = { Time = 0.3,  Style = Enum.EasingStyle.Quint,       Dir = Enum.EasingDirection.Out },
+		Notif     = { Time = 0.85, Style = Enum.EasingStyle.Exponential, Dir = Enum.EasingDirection.Out },
+		Hover     = { Time = 0.12, Style = Enum.EasingStyle.Quart,       Dir = Enum.EasingDirection.Out },
 	},
 
 	Icons = {
@@ -257,9 +285,58 @@ function Util.CreateHardBorder(parent, size, pos, bgTop, bgBottom, isMainWin)
 	return outer, inner
 end
 
+-- Animated rainbow color sequence that cycles hue over time
+local function buildRainbowColorSequence(offset)
+	offset = offset or 0
+	local stops = {
+		{ 0.00, Color3.fromHSV((0.00 + offset) % 1, 0.85, 1.0) },
+		{ 0.17, Color3.fromHSV((0.17 + offset) % 1, 0.85, 1.0) },
+		{ 0.34, Color3.fromHSV((0.34 + offset) % 1, 0.85, 1.0) },
+		{ 0.50, Color3.fromHSV((0.50 + offset) % 1, 0.85, 1.0) },
+		{ 0.67, Color3.fromHSV((0.67 + offset) % 1, 0.85, 1.0) },
+		{ 0.84, Color3.fromHSV((0.84 + offset) % 1, 0.85, 1.0) },
+		{ 1.00, Color3.fromHSV((1.00 + offset) % 1, 0.85, 1.0) },
+	}
+	local kps = {}
+	for _, s in ipairs(stops) do
+		table.insert(kps, ColorSequenceKeypoint.new(s[1], s[2]))
+	end
+	return ColorSequence.new(kps)
+end
+
 function Util.AddSkeetGradientBar(parent, height)
+	local h = height or 2
+
+	-- Glow base frame (wider, blurred effect behind the bar)
+	local glowBase = New("Frame", {
+		Size = UDim2.new(1, 0, 0, h + 6),
+		Position = UDim2.fromOffset(0, -3),
+		BackgroundColor3 = Color3.fromRGB(140, 100, 255),
+		BackgroundTransparency = 0.55,
+		BorderSizePixel = 0,
+		ZIndex = 9,
+		ClipsDescendants = false,
+		Parent = parent,
+	})
+	New("UICorner", { CornerRadius = UDim.new(0, h + 3), Parent = glowBase })
+	local glowGrad = New("UIGradient", {
+		Rotation = 0,
+		Color = buildRainbowColorSequence(0),
+		Parent = glowBase,
+	})
+	New("UIGradient", {
+		Rotation = 0,
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.7),
+			NumberSequenceKeypoint.new(0.5, 0.45),
+			NumberSequenceKeypoint.new(1, 0.7),
+		}),
+		Parent = glowBase,
+	})
+
+	-- The actual sharp rainbow bar on top
 	local bar = New("Frame", {
-		Size = UDim2.new(1, 0, 0, height or 2),
+		Size = UDim2.new(1, 0, 0, h),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 		BorderSizePixel = 0,
@@ -267,29 +344,41 @@ function Util.AddSkeetGradientBar(parent, height)
 		ClipsDescendants = false,
 		Parent = parent,
 	})
-	New("UICorner", { CornerRadius = UDim.new(0, height or 2), Parent = bar })
+	New("UICorner", { CornerRadius = UDim.new(0, h), Parent = bar })
 
 	local grad = New("UIGradient", {
 		Rotation = 0,
-		Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0.00, Color3.fromRGB(54, 163, 247)),
-			ColorSequenceKeypoint.new(0.20, Color3.fromRGB(98, 216, 247)),
-			ColorSequenceKeypoint.new(0.40, Color3.fromRGB(168, 219, 95)),
-			ColorSequenceKeypoint.new(0.60, Color3.fromRGB(247, 184, 92)),
-			ColorSequenceKeypoint.new(0.80, Color3.fromRGB(247, 104, 181)),
-			ColorSequenceKeypoint.new(1.00, Color3.fromRGB(184, 119, 247)),
-		}),
+		Color = buildRainbowColorSequence(0),
 		Parent = bar,
 	})
 	New("UIGradient", {
 		Rotation = 0,
 		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.3),
+			NumberSequenceKeypoint.new(0, 0.2),
 			NumberSequenceKeypoint.new(0.5, 0),
-			NumberSequenceKeypoint.new(1, 0.3),
+			NumberSequenceKeypoint.new(1, 0.2),
 		}),
 		Parent = bar,
 	})
+
+	-- Animate the rainbow: shift hue offset over time
+	local rainbowOffset = 0
+	local glowPulse = 0
+	table.insert(Library.Connections, RunService.RenderStepped:Connect(function(dt)
+		if Library.Unloaded then return end
+		if not bar.Parent then return end
+
+		-- Move rainbow hue
+		rainbowOffset = (rainbowOffset + dt * 0.12) % 1
+		local seq = buildRainbowColorSequence(rainbowOffset)
+		grad.Color = seq
+		glowGrad.Color = seq
+
+		-- Pulse the glow transparency
+		glowPulse = glowPulse + dt * 1.8
+		local pulse = 0.5 + math.sin(glowPulse) * 0.12
+		glowBase.BackgroundTransparency = math.clamp(pulse, 0.38, 0.72)
+	end))
 
 	return bar
 end
@@ -842,12 +931,12 @@ function Library:Notify(cfg)
 		Util.RegisterTheme(timerBar, "BackgroundColor3", "AccentColor")
 	end
 
-	-- Slide-in animation
-	Util.Tween(notifOuter, 0.22, { Position = UDim2.fromOffset(0, 0) }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+	-- Slide-in animation (Exponential like juanitahaxx notif: 0.85s Exponential Out)
+	Util.Tween(notifOuter, Library.Animation.Notif.Time, { Position = UDim2.fromOffset(0, 0) }, Library.Animation.Notif.Style, Library.Animation.Notif.Dir)
 	Util.Tween(timerBar, dur, { Size = UDim2.new(0, 0, 0, 2) }, Enum.EasingStyle.Linear)
 
 	task.delay(dur, function()
-		local out = Util.Tween(notifOuter, 0.2, { Position = UDim2.fromOffset(120, 0) }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+		local out = Util.Tween(notifOuter, 0.35, { Position = UDim2.fromOffset(130, 0) }, Enum.EasingStyle.Exponential, Enum.EasingDirection.In)
 		out.Completed:Connect(function() notifOuter:Destroy() end)
 	end)
 end
@@ -1627,28 +1716,38 @@ function Library:CreateWindow(cfg)
 				Library:SetThemeColor(k, col)
 			end
 			
-			-- Hide every other tab page immediately (no blocking :Wait()).
-			-- A blocking tween inside a UI input callback deadlocks/errors
-			-- and is what broke tab switching.
+			-- Enhanced tab transition with Exponential easing (juanitahaxx style)
 			for _, other in ipairs(Window.Tabs) do
-				other.Page.Visible = false
-				Util.Tween(other.Pill, 0.12, { Size = UDim2.new(0, 3, 0, 0) })
-				Util.Tween(other.Label, 0.15, { TextColor3 = Library.Theme.TextDim })
-				if other.Icon then Util.Tween(other.Icon, 0.15, { ImageColor3 = Library.Theme.TextDim }) end
-				Util.Tween(other.Inner, 0.15, { BackgroundColor3 = Library.Theme.ControlTop })
+				if other.Page ~= tabPage and other.Page.Visible then
+					-- Fade out / slide up old tab
+					Util.Tween(other.Page, 0.2, {
+						Position = UDim2.fromOffset(0, -8)
+					}, Enum.EasingStyle.Exponential, Enum.EasingDirection.In):Wait()
+					other.Page.Visible = false
+					other.Page.Position = UDim2.fromOffset(0, 0)
+				else
+					other.Page.Visible = false
+				end
+
+				-- Pill collapses with spring-like Exponential
+				Util.Tween(other.Pill, Library.Animation.Tab.Time, { Size = UDim2.new(0, 2, 0, 0) }, Library.Animation.Tab.Style, Library.Animation.Tab.Dir)
+				Util.Tween(other.Label, 0.25, { TextColor3 = Library.Theme.TextDim }, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+				if other.Icon then Util.Tween(other.Icon, 0.25, { ImageColor3 = Library.Theme.TextDim }, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out) end
+				Util.Tween(other.Inner, 0.25, { BackgroundColor3 = Library.Theme.ControlTop }, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
 			end
-			
-			-- Slide in new tab
-			tabPage.Position = UDim2.fromOffset(0, 10)
+
+			-- Slide in new tab from below with Exponential
+			tabPage.Position = UDim2.fromOffset(0, 14)
 			tabPage.Visible = true
-			Util.Tween(tabPage, 0.2, { 
+			Util.Tween(tabPage, Library.Animation.Tab.Time, {
 				Position = UDim2.fromOffset(0, 0)
-			}, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-			
-			Util.Tween(activePill, 0.18, { Size = UDim2.new(0, 3, 0.65, 0) }, Enum.EasingStyle.Quart)
-			Util.Tween(tabLabel, 0.18, { TextColor3 = Library.Theme.Text })
-			if tabIcon then Util.Tween(tabIcon, 0.18, { ImageColor3 = Library.Theme.Accent1 }) end
-			Util.Tween(tabBtnInner, 0.18, { BackgroundColor3 = Library.Theme.GroupTop })
+			}, Library.Animation.Tab.Style, Library.Animation.Tab.Dir)
+
+			-- Pill expands like a spring
+			Util.Tween(activePill, Library.Animation.Tab.Time, { Size = UDim2.new(0, 3, 0.7, 0) }, Library.Animation.Tab.Style, Library.Animation.Tab.Dir)
+			Util.Tween(tabLabel, 0.4, { TextColor3 = Library.Theme.Text }, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+			if tabIcon then Util.Tween(tabIcon, 0.4, { ImageColor3 = Library.Theme.Accent1 }, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out) end
+			Util.Tween(tabBtnInner, 0.4, { BackgroundColor3 = Library.Theme.GroupTop }, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
 		end
 
 		tabBtnInner.InputBegan:Connect(function(input)
@@ -1661,12 +1760,14 @@ function Library:CreateWindow(cfg)
 		tabBtnInner.MouseEnter:Connect(function()
 			Util.PlaySound("hover")
 			if not tabPage.Visible then
-				Util.Tween(tabBtnInner, 0.1, { BackgroundColor3 = Library.Theme.ControlHover })
+				Util.Tween(tabBtnInner, Library.Animation.Hover.Time, { BackgroundColor3 = Library.Theme.ControlHover }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
+				Util.Tween(tabLabel, Library.Animation.Hover.Time, { TextColor3 = Library.Theme.TextDim:lerp(Library.Theme.Text, 0.5) }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
 			end
 		end)
 		tabBtnInner.MouseLeave:Connect(function()
 			if not tabPage.Visible then
-				Util.Tween(tabBtnInner, 0.1, { BackgroundColor3 = Library.Theme.ControlTop })
+				Util.Tween(tabBtnInner, Library.Animation.Hover.Time, { BackgroundColor3 = Library.Theme.ControlTop }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
+				Util.Tween(tabLabel, Library.Animation.Hover.Time, { TextColor3 = Library.Theme.TextDim }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
 			end
 		end)
 
