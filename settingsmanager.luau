@@ -592,13 +592,25 @@ function ThemeManager:BuildThemeSection(groupbox)
 		title.Size = UDim2.new(1, 0, 0, 24)
 		title.Position = UDim2.fromOffset(0, 4)
 		title.BackgroundTransparency = 1
-		title.Font = lib.Theme.FontBold
+		if typeof(lib.Theme.FontBold) == "Font" then
+			title.FontFace = lib.Theme.FontBold
+		else
+			title.Font = lib.Theme.FontBold
+		end
 		title.TextSize = lib.Theme.FontSize + 1
 		title.TextColor3 = themeData.FontColor
 		title.Text = "THEME PREVIEW"
 		title.TextXAlignment = Enum.TextXAlignment.Center
 		title.ZIndex = 10
 		title.Parent = previewInner
+
+		local titleGrad = Instance.new("UIGradient")
+		titleGrad.Rotation = 90
+		titleGrad.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(163, 163, 163))
+		})
+		titleGrad.Parent = title
 		
 		-- Preview content area
 		local previewContent = Instance.new("Frame")
@@ -629,12 +641,24 @@ function ThemeManager:BuildThemeSection(groupbox)
 		toggleLabel.Size = UDim2.new(1, -20, 1, 0)
 		toggleLabel.Position = UDim2.fromOffset(20, 0)
 		toggleLabel.BackgroundTransparency = 1
-		toggleLabel.Font = lib.Theme.Font
+		if typeof(lib.Theme.Font) == "Font" then
+			toggleLabel.FontFace = lib.Theme.Font
+		else
+			toggleLabel.Font = lib.Theme.Font
+		end
 		toggleLabel.TextSize = lib.Theme.FontSize
 		toggleLabel.TextColor3 = themeData.FontColor
 		toggleLabel.Text = "Sample Toggle"
 		toggleLabel.TextXAlignment = Enum.TextXAlignment.Left
 		toggleLabel.Parent = sampleToggle
+
+		local toggleLabelGrad = Instance.new("UIGradient")
+		toggleLabelGrad.Rotation = 90
+		toggleLabelGrad.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(163, 163, 163))
+		})
+		toggleLabelGrad.Parent = toggleLabel
 		
 		-- Sample button
 		local sampleButton = Instance.new("Frame")
@@ -648,12 +672,24 @@ function ThemeManager:BuildThemeSection(groupbox)
 		local buttonLabel = Instance.new("TextLabel")
 		buttonLabel.Size = UDim2.new(1, 0, 1, 0)
 		buttonLabel.BackgroundTransparency = 1
-		buttonLabel.Font = lib.Theme.FontBold
+		if typeof(lib.Theme.FontBold) == "Font" then
+			buttonLabel.FontFace = lib.Theme.FontBold
+		else
+			buttonLabel.Font = lib.Theme.FontBold
+		end
 		buttonLabel.TextSize = lib.Theme.FontSize
 		buttonLabel.TextColor3 = themeData.FontColor
 		buttonLabel.Text = "Sample Button"
 		buttonLabel.ZIndex = 2
 		buttonLabel.Parent = sampleButton
+
+		local buttonLabelGrad = Instance.new("UIGradient")
+		buttonLabelGrad.Rotation = 90
+		buttonLabelGrad.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(163, 163, 163))
+		})
+		buttonLabelGrad.Parent = buttonLabel
 		
 		-- Close button
 		local closeBtn = Instance.new("TextButton")
@@ -661,7 +697,11 @@ function ThemeManager:BuildThemeSection(groupbox)
 		closeBtn.Position = UDim2.new(1, -28, 0, 4)
 		closeBtn.BackgroundTransparency = 1
 		closeBtn.Text = "✕"
-		closeBtn.Font = lib.Theme.FontBold
+		if typeof(lib.Theme.FontBold) == "Font" then
+			closeBtn.FontFace = lib.Theme.FontBold
+		else
+			closeBtn.Font = lib.Theme.FontBold
+		end
 		closeBtn.TextSize = lib.Theme.FontSize + 2
 		closeBtn.TextColor3 = Color3.fromRGB(165, 165, 180)
 		closeBtn.ZIndex = 15
@@ -682,7 +722,11 @@ function ThemeManager:BuildThemeSection(groupbox)
 		applyBtn.BorderSizePixel = 1
 		applyBtn.BorderColor3 = themeData.OutlineColor
 		applyBtn.Text = "Apply Theme"
-		applyBtn.Font = lib.Theme.FontBold
+		if typeof(lib.Theme.FontBold) == "Font" then
+			applyBtn.FontFace = lib.Theme.FontBold
+		else
+			applyBtn.Font = lib.Theme.FontBold
+		end
 		applyBtn.TextSize = lib.Theme.FontSize
 		applyBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
 		applyBtn.ZIndex = 10
@@ -1123,6 +1167,28 @@ function ThemeManager:BuildThemeSection(groupbox)
 			SaveManager:BuildConfigSection(sGroup)
 			ThemeManager:BuildThemeSection(sGroup)
 			setSettingsBtnText("Close Settings Manager")
+
+			-- Apply universal custom font and gradient to all text elements in the settings window
+			if lib and lib.Theme and lib.Theme.Font then
+				for _, obj in ipairs(sWindow.Root:GetDescendants()) do
+					if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+						if typeof(lib.Theme.Font) == "Font" then
+							obj.FontFace = lib.Theme.Font
+						else
+							obj.Font = lib.Theme.Font
+						end
+						if not obj:IsA("TextBox") and not obj:FindFirstChildOfClass("UIGradient") then
+							local grad = Instance.new("UIGradient")
+							grad.Rotation = 90
+							grad.Color = ColorSequence.new({
+								ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+								ColorSequenceKeypoint.new(1, Color3.fromRGB(163, 163, 163))
+							})
+							grad.Parent = obj
+						end
+					end
+				end
+			end
 		end,
 	})
 end
