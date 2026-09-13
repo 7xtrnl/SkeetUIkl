@@ -130,8 +130,8 @@ local Library = {
 	ParticleEffects = {},
 
 	Theme = {
-		Accent1       = Color3.fromRGB(168, 219, 95),  -- Skeet Green
-		Accent2       = Color3.fromRGB(94, 158, 219),  -- Skeet Cyan
+		Accent1       = Color3.fromRGB(138, 43, 226),  -- Purple Accent
+		Accent2       = Color3.fromRGB(186, 85, 211),  -- Light Purple
 		AccentDark    = Color3.fromRGB(105, 160, 50),
 		MainTop       = Color3.fromRGB(32, 32, 38),
 		MainBottom    = Color3.fromRGB(18, 18, 22),
@@ -202,6 +202,23 @@ function Util.Create(class, props, children)
 	end
 	for _, child in ipairs(children or {}) do child.Parent = inst end
 	if props and props.Parent then inst.Parent = props.Parent end
+	-- Auto-apply premium text styling for any TextLabel or TextButton
+	if class == "TextLabel" or class == "TextButton" then
+		if typeof(TahomaFont) == "Font" then
+			inst.FontFace = TahomaFont
+		end
+		inst.TextSize = 12
+		local grad = Instance.new("UIGradient")
+		grad.Rotation = 90
+		grad.Color = ColorSequence.new(
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(163, 163, 163))
+		)
+		grad.Parent = inst
+	end
+
+
+
 	return inst
 end
 local New = Util.Create
@@ -1720,9 +1737,8 @@ function Library:CreateWindow(cfg)
 			for _, other in ipairs(Window.Tabs) do
 				if other.Page ~= tabPage and other.Page.Visible then
 					-- Fade out / slide up old tab
-					Util.Tween(other.Page, 0.2, {
-						Position = UDim2.fromOffset(0, -8)
-					}, Enum.EasingStyle.Exponential, Enum.EasingDirection.In):Wait()
+					local tween = Util.Tween(other.Page, 0.2, { Position = UDim2.fromOffset(0, -8) }, Enum.EasingStyle.Exponential, Enum.EasingDirection.In)
+					tween.Completed:Wait()
 					other.Page.Visible = false
 					other.Page.Position = UDim2.fromOffset(0, 0)
 				else
