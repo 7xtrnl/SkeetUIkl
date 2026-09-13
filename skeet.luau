@@ -20,6 +20,7 @@ local RunService       = game:GetService("RunService")
 local Players          = game:GetService("Players")
 local CoreGui          = game:GetService("CoreGui")
 local SoundService     = game:GetService("SoundService")
+local HttpService      = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -88,23 +89,36 @@ blurVignette.Transparency = NumberSequence.new({
 })
 blurVignette.Parent = blurOverlay
 
--- TahomaXP Custom Font (same as juanitahaxx Library)
+-- TahomaXP Custom Font (Strictly loaded via getcustomasset and FontFace)
 local TahomaFont = nil
 pcall(function()
-	if isfile and writefile and getcustomasset and HttpService then
-		local fontId = "juanitaaaaaaa/Assets/TahomaXP.ttf"
-		if not isfile(fontId) then
-			if not isfolder("juanitaaaaaaa") then makefolder("juanitaaaaaaa") end
-			if not isfolder("juanitaaaaaaa/Assets") then makefolder("juanitaaaaaaa/Assets") end
-			writefile(fontId, game:HttpGet("https://github.com/sametexe001/luas/raw/refs/heads/main/fonts/windows-xp-tahoma.ttf"))
+	local getAsset = getcustomasset or getsynasset
+	if isfile and writefile and getAsset then
+		local folder = "juanitaaaaaaa"
+		local assetsFolder = "juanitaaaaaaa/Assets"
+		if not isfolder(folder) then makefolder(folder) end
+		if not isfolder(assetsFolder) then makefolder(assetsFolder) end
+
+		local ttfPath = "juanitaaaaaaa/Assets/TahomaXP.ttf"
+		if not isfile(ttfPath) then
+			writefile(ttfPath, game:HttpGet("https://github.com/sametexe001/luas/raw/refs/heads/main/fonts/windows-xp-tahoma.ttf"))
 		end
-		local fontJson = HttpService:JSONEncode({
+
+		local fontData = {
 			name = "TahomaXP",
-			faces = {{ name = "TahomaXP", weight = 400, style = "Regular", assetId = getcustomasset(fontId) }}
-		})
-		local fontFile = "juanitaaaaaaa/Assets/TahomaXP.font"
-		writefile(fontFile, fontJson)
-		TahomaFont = Font.new(getcustomasset(fontFile))
+			faces = {
+				{
+					name = "TahomaXP",
+					weight = 400,
+					style = "Regular",
+					assetId = getAsset(ttfPath)
+				}
+			}
+		}
+
+		local fontPath = "juanitaaaaaaa/Assets/TahomaXP.font"
+		writefile(fontPath, HttpService:JSONEncode(fontData))
+		TahomaFont = Font.new(getAsset(fontPath))
 	end
 end)
 
