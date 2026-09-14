@@ -1001,6 +1001,7 @@ function Library:CreateWindow(cfg)
 	local winOuter, winInner = Util.CreateHardBorder(screenGui, winSize, UDim2.fromScale(0.5, 0.5), Library.Theme.MainTop, Library.Theme.MainBottom, true)
 	winOuter.AnchorPoint = Vector2.new(0.5, 0.5)
 	winOuter.ZIndex = 10
+	local winScale = New("UIScale", { Scale = 1, Parent = winOuter })
 
 	-- Full-bleed ambient wash with animated gradient
 	local animBg = New("Frame", {
@@ -1309,7 +1310,10 @@ function Library:CreateWindow(cfg)
 				if snowLayer then snowLayer.Visible = true end
 
 				winOuter.Visible = true
+				winScale.Scale = 0.955
 				winOuter.Size = UDim2.fromOffset(winSize.X.Offset - 18, winSize.Y.Offset - 18)
+				-- Overshoot "pop" for a snappy, premium open feel
+				Util.Tween(winScale, 0.24, { Scale = 1 }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 				Util.Tween(winOuter, 0.2, { Size = winSize }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 				Util.PlaySound("open")
 			else
@@ -1320,6 +1324,7 @@ function Library:CreateWindow(cfg)
 				end
 
 				local t = Util.Tween(winOuter, 0.15, { Size = UDim2.fromOffset(winSize.X.Offset - 18, winSize.Y.Offset - 18) }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+				Util.Tween(winScale, 0.16, { Scale = 0.955 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 				t.Completed:Connect(function()
 					winOuter.Visible = false
 					winOuter.Size = winSize
@@ -2217,15 +2222,21 @@ function Library:CreateWindow(cfg)
 				})
 
 				local function refreshBindState(isActive)
+					local keyText = "[" .. (currentKey.Name or "NONE") .. "]"
 					if listening then
 						bindLabel.Text = "[...]"
 						bindLabel.TextColor3 = Library.Theme.Accent1
 					elseif isActive then
-						bindLabel.Text = "[" .. (currentKey.Name or "NONE") .. "]"
+						bindLabel.Text = keyText
 						bindLabel.TextColor3 = Library.Theme.Accent1
 					else
-						bindLabel.Text = "[" .. (currentKey.Name or "NONE") .. "]"
+						bindLabel.Text = keyText
 						bindLabel.TextColor3 = Library.Theme.Text
+					end
+					-- Soft accent glow on the button while armed/active
+					if bindBtnInner then
+						local activeFill = Library.Theme.Accent1:Lerp(Library.Theme.MainTop, 0.68)
+						Util.Tween(bindBtnInner, 0.14, { BackgroundColor3 = (isActive or listening) and activeFill or Library.Theme.ControlTop })
 					end
 				end
 
@@ -2924,6 +2935,7 @@ function Library:CreateWindow(cfg)
 				})
 
 				local popOuter = nil
+				local popShadow = nil
 				local blocker  = nil
 				local isOpen   = false
 
@@ -2940,6 +2952,7 @@ function Library:CreateWindow(cfg)
 					isOpen = false
 					Util.Tween(arrow, 0.14, { Rotation = 0, ImageColor3 = Library.Theme.TextDim })
 					if blocker then blocker:Destroy() blocker = nil end
+					if popShadow then popShadow:Destroy() popShadow = nil end
 					if popOuter then
 						local anim = Util.Tween(popOuter, 0.12, { Size = UDim2.fromOffset(popOuter.AbsoluteSize.X, 0) })
 						anim.Completed:Connect(function()
@@ -2972,6 +2985,17 @@ function Library:CreateWindow(cfg)
 					pOuter.ZIndex = 9995
 					Util.AddSkeetGradientBar(pInner, 1)
 					popOuter = pOuter
+
+					-- Hard drop shadow behind the popup (matches the hard-edge language)
+					popShadow = New("Frame", {
+						Size = UDim2.fromOffset(absSize.X + 4, listH + 10),
+						Position = UDim2.fromOffset(absPos.X + 2, absPos.Y + absSize.Y + 6),
+						BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+						BackgroundTransparency = 0.72,
+						BorderSizePixel = 0,
+						ZIndex = 9994,
+						Parent = screenGui,
+					})
 
 					local scroll = New("ScrollingFrame", {
 						Size = UDim2.new(1, 0, 1, -2),
