@@ -1,6 +1,6 @@
 --[[
 	══════════════════════════════════════════════════════════════════════════════
-	  SKEETWARE SETTINGS MANAGER (Linoria-Style Modular Companion)
+	  AXIOM SETTINGS MANAGER (Linoria-Style Modular Companion)
 	  • SaveManager: Save, Load, Overwrite, Auto-Load, Delete & Refresh Configs
 	  • ThemeManager: "FontColor", "MainColor", "AccentColor", "BackgroundColor", "OutlineColor"
 	  • Native file operations: writefile, readfile, listfiles, isfolder, makefolder, delfile
@@ -10,7 +10,7 @@
 local HttpService = game:GetService("HttpService")
 
 local SettingsManager = {
-	Folder = "SkeetwareConfigs",
+	Folder = "AxiomConfigs",
 	Library = nil,
 	SaveManager = {},
 	ThemeManager = {},
@@ -334,6 +334,13 @@ ThemeManager.BuiltInThemes = {
 		BackgroundColor = Color3.fromRGB(28, 28, 32),
 		OutlineColor    = Color3.fromRGB(0, 0, 0),
 	},
+	["Skeet Light"] = {
+		FontColor       = Color3.fromRGB(40, 40, 45),
+		MainColor       = Color3.fromRGB(225, 225, 230),
+		AccentColor     = Color3.fromRGB(30, 120, 210),
+		BackgroundColor = Color3.fromRGB(244, 244, 248),
+		OutlineColor    = Color3.fromRGB(120, 120, 130),
+	},
 	["Midnight Blue"] = {
 		FontColor       = Color3.fromRGB(220, 230, 245),
 		MainColor       = Color3.fromRGB(18, 22, 32),
@@ -366,6 +373,148 @@ function ThemeManager:ApplyTheme(themeData)
 	SettingsManager.Library:SetTheme(themeData)
 end
 
+--============================================================================--
+-- CUSTOM THEME PRESETS (save / load / delete own combinations)
+--============================================================================--
+local ThemePresetFolder = "AxiomThemes"
+
+function ThemeManager:GetThemePresetFolder()
+	return ThemePresetFolder
+end
+
+function ThemeManager:GetPresetList()
+	local files = {}
+	if typeof(listfiles) == "function" then
+		checkFolder(ThemePresetFolder)
+		local ok, res = pcall(listfiles, ThemePresetFolder)
+		if ok and typeof(res) == "table" then
+			for _, file in ipairs(res) do
+				local name = file:match("([^/\\]+)%.theme%.json$")
+				if name then table.insert(files, name) end
+			end
+		end
+	end
+	table.sort(files)
+	return files
+end
+
+-- Serializes a theme table (Color3 values) into a compact JSON string
+function ThemeManager:EncodeTheme(themeData)
+	local out = {}
+	for k, v in pairs(themeData or {}) do
+		if typeof(v) == "Color3" then out[k] = encodeValue(v) end
+	end
+	local ok, json = pcall(function() return HttpService:JSONEncode(out) end)
+	if ok then return json end
+	return nil
+end
+
+-- Deserializes a theme JSON string back into { FontColor = Color3, ... }
+function ThemeManager:DecodeTheme(json)
+	if not json or json:gsub(" ", "") == "" then return nil end
+	local ok, decoded = pcall(function() return HttpService:JSONDecode(json) end)
+	if not ok or typeof(decoded) ~= "table" then return nil end
+	local out = {}
+	for k, v in pairs(decoded) do
+		if k == "FontColor" or k == "MainColor" or k == "AccentColor" or k == "BackgroundColor" or k == "OutlineColor" then
+			local col = decodeValue(v)
+			if typeof(col) == "Color3" then out[k] = col end
+		end
+	end
+	if next(out) then return out end
+	return nil
+end
+
+function ThemeManager:SavePreset(name, themeData)
+	if not name or name:gsub(" ", "") == "" then
+		if SettingsManager.Library then
+			SettingsManager.Library:Notify({ Title = "Theme Manager", Text = "Please enter a valid preset name.", Duration = 3 })
+		end
+		return false
+	end
+	local json = self:EncodeTheme(themeData)
+	if not json then
+		if SettingsManager.Library then
+			SettingsManager.Library:Notify({ Title = "Theme Manager", Text = "Could not encode the current theme.", Duration = 3 })
+		end
+		return false
+	end
+	checkFolder(ThemePresetFolder)
+	safeWriteFile(ThemePresetFolder .. "/" .. name .. ".theme.json", json)
+	if SettingsManager.Library then
+		SettingsManager.Library:Notify({ Title = "Theme Manager", Text = string.format("Saved theme preset '%s'.", name), Duration = 3 })
+	end
+	return true
+end
+
+function ThemeManager:LoadPreset(name)
+	if not name or name:gsub(" ", "") == "" then return nil end
+	local raw = safeReadFile(ThemePresetFolder .. "/" .. name .. ".theme.json")
+	local themeData = self:DecodeTheme(raw)
+	if themeData then
+		self:ApplyTheme(themeData)
+		return themeData
+	end
+	if SettingsManager.Library then
+		SettingsManager.Library:Notify({ Title = "Theme Manager", Text = string.format("Could not load theme preset '%s'.", name), Duration = 3 })
+	end
+	return nil
+end
+
+function ThemeManager:DeletePreset(name)
+	if not name or name:gsub(" ", "") == "" then return false end
+	safeDeleteFile(ThemePresetFolder .. "/" .. name .. ".theme.json")
+	if SettingsManager.Library then
+		SettingsManager.Library:Notify({ Title = "Theme Manager", Text = string.format("Deleted theme preset '%s'.", name), Duration = 3 })
+	end
+	return true
+end
+
+--============================================================================--
+-- THEME IMPORT / EXPORT (share via clipboard or pasted JSON / files)
+--============================================================================--
+function ThemeManager:ExportClipboard(themeData)
+	local json = self:EncodeTheme(themeData)
+	if not json then return false, nil end
+	local copied = false
+	if typeof(setclipboard) == "function" then
+		copied = pcall(setclipboard, json)
+	elseif typeof(toclipboard) == "function" then
+		copied = pcall(toclipboard, json)
+	end
+	return copied, json
+end
+
+function ThemeManager:ImportClipboard()
+	local text = nil
+	if typeof(getclipboard) == "function" then
+		local ok, res = pcall(getclipboard)
+		if ok and typeof(res) == "string" and res ~= "" then text = res end
+	end
+	if not text then return nil end
+	return self:DecodeTheme(text)
+end
+
+--============================================================================--
+-- RANDOM THEME GENERATOR
+--============================================================================--
+function ThemeManager:GenerateRandomTheme()
+	local hue = math.random()
+	local accent = Color3.fromHSV(hue, 0.78, 0.95)
+	-- Dark, hue-tinted surfaces derived from the same random hue
+	local main     = Color3.fromHSV(hue, 0.22, 0.16)
+	local bg       = Color3.fromHSV(hue, 0.28, 0.12)
+	local outline  = Color3.fromRGB(0, 0, 0)
+	local font     = Color3.fromRGB(236, 236, 240)
+	return {
+		FontColor       = font,
+		MainColor       = main,
+		AccentColor     = accent,
+		BackgroundColor = bg,
+		OutlineColor    = outline,
+	}
+end
+
 function ThemeManager:BuildThemeSection(groupbox)
 	local themeNames = {}
 	for name in pairs(self.BuiltInThemes) do
@@ -382,6 +531,227 @@ function ThemeManager:BuildThemeSection(groupbox)
 	}
 
 	local pickers = {}
+	local previewWindow = nil
+	local newPresetName  = ""
+	local selectedPreset = ""
+	local importedJson   = ""
+
+	-- Theme Preview Function
+	local function showThemePreview(themeData)
+		if not SettingsManager.Library then return end
+		
+		-- Close existing preview
+		if previewWindow then
+			if previewWindow.Root then previewWindow.Root:Destroy() end
+			previewWindow = nil
+		end
+		
+		local lib = SettingsManager.Library
+		local screenGui = lib.ScreenGui
+		
+		-- Simple preview window (without complex border system for compatibility)
+		local previewOuter = Instance.new("Frame")
+		previewOuter.Size = UDim2.fromOffset(320, 280)
+		previewOuter.Position = UDim2.new(0.5, 0, 0.5, -140)
+		previewOuter.AnchorPoint = Vector2.new(0.5, 0.5)
+		previewOuter.BackgroundColor3 = themeData.OutlineColor
+		previewOuter.BorderSizePixel = 0
+		previewOuter.ZIndex = 9995
+		previewOuter.Parent = screenGui
+		
+		local previewInner = Instance.new("Frame")
+		previewInner.Size = UDim2.new(1, -2, 1, -2)
+		previewInner.Position = UDim2.fromOffset(1, 1)
+		previewInner.BackgroundColor3 = themeData.BackgroundColor
+		previewInner.BorderSizePixel = 0
+		previewInner.Parent = previewOuter
+		
+		-- Simple gradient bar
+		local gradientBar = Instance.new("Frame")
+		gradientBar.Size = UDim2.new(1, 0, 0, 2)
+		gradientBar.Position = UDim2.fromOffset(0, 0)
+		gradientBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		gradientBar.BorderSizePixel = 0
+		gradientBar.ZIndex = 10
+		gradientBar.Parent = previewInner
+		
+		local gradient = Instance.new("UIGradient")
+		gradient.Rotation = 0
+		gradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0.00, Color3.fromRGB(54, 163, 247)),
+			ColorSequenceKeypoint.new(0.20, Color3.fromRGB(98, 216, 247)),
+			ColorSequenceKeypoint.new(0.40, Color3.fromRGB(168, 219, 95)),
+			ColorSequenceKeypoint.new(0.60, Color3.fromRGB(247, 184, 92)),
+			ColorSequenceKeypoint.new(0.80, Color3.fromRGB(247, 104, 181)),
+			ColorSequenceKeypoint.new(1.00, Color3.fromRGB(184, 119, 247)),
+		})
+		gradient.Parent = gradientBar
+		
+		-- Preview title
+		local title = Instance.new("TextLabel")
+		title.Size = UDim2.new(1, 0, 0, 24)
+		title.Position = UDim2.fromOffset(0, 4)
+		title.BackgroundTransparency = 1
+		if typeof(lib.Theme.FontBold) == "Font" then
+			title.FontFace = lib.Theme.FontBold
+		else
+			title.Font = lib.Theme.FontBold
+		end
+		title.TextSize = lib.Theme.FontSize + 1
+		title.TextColor3 = themeData.FontColor
+		title.Text = "THEME PREVIEW"
+		title.TextXAlignment = Enum.TextXAlignment.Center
+		title.ZIndex = 10
+		title.Parent = previewInner
+
+		local titleGrad = Instance.new("UIGradient")
+		titleGrad.Rotation = 90
+		titleGrad.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(163, 163, 163))
+		})
+		titleGrad.Parent = title
+		
+		-- Preview content area
+		local previewContent = Instance.new("Frame")
+		previewContent.Size = UDim2.new(1, -16, 1, -36)
+		previewContent.Position = UDim2.fromOffset(8, 28)
+		previewContent.BackgroundTransparency = 1
+		previewContent.Parent = previewInner
+		
+		-- Sample toggle
+		local sampleToggle = Instance.new("Frame")
+		sampleToggle.Size = UDim2.new(1, 0, 0, 20)
+		sampleToggle.Position = UDim2.fromOffset(0, 0)
+		sampleToggle.BackgroundTransparency = 1
+		sampleToggle.Parent = previewContent
+		
+		local toggleBox = Instance.new("Frame")
+		toggleBox.Size = UDim2.fromOffset(14, 14)
+		toggleBox.Position = UDim2.fromOffset(0, 3)
+		toggleBox.BackgroundColor3 = themeData.AccentColor
+		toggleBox.BorderSizePixel = 0
+		toggleBox.Parent = sampleToggle
+		
+		local toggleCorner = Instance.new("UICorner")
+		toggleCorner.CornerRadius = UDim.new(0, 2)
+		toggleCorner.Parent = toggleBox
+		
+		local toggleLabel = Instance.new("TextLabel")
+		toggleLabel.Size = UDim2.new(1, -20, 1, 0)
+		toggleLabel.Position = UDim2.fromOffset(20, 0)
+		toggleLabel.BackgroundTransparency = 1
+		if typeof(lib.Theme.Font) == "Font" then
+			toggleLabel.FontFace = lib.Theme.Font
+		else
+			toggleLabel.Font = lib.Theme.Font
+		end
+		toggleLabel.TextSize = lib.Theme.FontSize
+		toggleLabel.TextColor3 = themeData.FontColor
+		toggleLabel.Text = "Sample Toggle"
+		toggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+		toggleLabel.Parent = sampleToggle
+
+		local toggleLabelGrad = Instance.new("UIGradient")
+		toggleLabelGrad.Rotation = 90
+		toggleLabelGrad.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(163, 163, 163))
+		})
+		toggleLabelGrad.Parent = toggleLabel
+		
+		-- Sample button
+		local sampleButton = Instance.new("Frame")
+		sampleButton.Size = UDim2.new(1, 0, 0, 24)
+		sampleButton.Position = UDim2.fromOffset(0, 24)
+		sampleButton.BackgroundColor3 = themeData.MainColor
+		sampleButton.BorderSizePixel = 1
+		sampleButton.BorderColor3 = themeData.OutlineColor
+		sampleButton.Parent = previewContent
+		
+		local buttonLabel = Instance.new("TextLabel")
+		buttonLabel.Size = UDim2.new(1, 0, 1, 0)
+		buttonLabel.BackgroundTransparency = 1
+		if typeof(lib.Theme.FontBold) == "Font" then
+			buttonLabel.FontFace = lib.Theme.FontBold
+		else
+			buttonLabel.Font = lib.Theme.FontBold
+		end
+		buttonLabel.TextSize = lib.Theme.FontSize
+		buttonLabel.TextColor3 = themeData.FontColor
+		buttonLabel.Text = "Sample Button"
+		buttonLabel.ZIndex = 2
+		buttonLabel.Parent = sampleButton
+
+		local buttonLabelGrad = Instance.new("UIGradient")
+		buttonLabelGrad.Rotation = 90
+		buttonLabelGrad.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(163, 163, 163))
+		})
+		buttonLabelGrad.Parent = buttonLabel
+		
+		-- Close button
+		local closeBtn = Instance.new("TextButton")
+		closeBtn.Size = UDim2.fromOffset(24, 24)
+		closeBtn.Position = UDim2.new(1, -28, 0, 4)
+		closeBtn.BackgroundTransparency = 1
+		closeBtn.Text = "✕"
+		if typeof(lib.Theme.FontBold) == "Font" then
+			closeBtn.FontFace = lib.Theme.FontBold
+		else
+			closeBtn.Font = lib.Theme.FontBold
+		end
+		closeBtn.TextSize = lib.Theme.FontSize + 2
+		closeBtn.TextColor3 = Color3.fromRGB(165, 165, 180)
+		closeBtn.ZIndex = 15
+		closeBtn.Parent = previewInner
+		
+		closeBtn.MouseButton1Click:Connect(function()
+			if previewWindow and previewWindow.Root then
+				previewWindow.Root:Destroy()
+				previewWindow = nil
+			end
+		end)
+		
+		-- Apply button
+		local applyBtn = Instance.new("TextButton")
+		applyBtn.Size = UDim2.new(1, -16, 0, 24)
+		applyBtn.Position = UDim2.fromOffset(8, -32)
+		applyBtn.BackgroundColor3 = themeData.AccentColor
+		applyBtn.BorderSizePixel = 1
+		applyBtn.BorderColor3 = themeData.OutlineColor
+		applyBtn.Text = "Apply Theme"
+		if typeof(lib.Theme.FontBold) == "Font" then
+			applyBtn.FontFace = lib.Theme.FontBold
+		else
+			applyBtn.Font = lib.Theme.FontBold
+		end
+		applyBtn.TextSize = lib.Theme.FontSize
+		applyBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+		applyBtn.ZIndex = 10
+		applyBtn.Parent = previewInner
+		
+		local applyCorner = Instance.new("UICorner")
+		applyCorner.CornerRadius = UDim.new(0, 4)
+		applyCorner.Parent = applyBtn
+		
+		applyBtn.MouseButton1Click:Connect(function()
+			self:ApplyTheme(themeData)
+			for prop, col in pairs(themeData) do
+				currentCustomTheme[prop] = col
+				if pickers[prop] and pickers[prop].Set then
+					pickers[prop]:Set(col)
+				end
+			end
+			if previewWindow and previewWindow.Root then
+				previewWindow.Root:Destroy()
+				previewWindow = nil
+			end
+		end)
+		
+		previewWindow = { Root = previewOuter }
+	end
 
 	groupbox:AddDropdown({
 		Text = "Theme Preset",
@@ -398,6 +768,188 @@ function ThemeManager:BuildThemeSection(groupbox)
 						pickers[prop]:Set(col)
 					end
 				end
+			end
+		end,
+	})
+	
+	-- Add a button to preview current theme
+	groupbox:AddButton({
+		Text = "Preview Current Theme",
+		Callback = function()
+			showThemePreview(currentCustomTheme)
+		end,
+	})
+
+	-- Dark / Light Mode quick switch between preset dark & light themes
+	groupbox:AddToggle({
+		Text = "Light Mode",
+		Default = false,
+		Flag = "__theme_lightmode",
+		Callback = function(state)
+			local preset = self.BuiltInThemes[state and "Skeet Light" or "Default Skeet"]
+			if preset then
+				self:ApplyTheme(preset)
+				for prop, col in pairs(preset) do
+					currentCustomTheme[prop] = col
+					if pickers[prop] and pickers[prop].Set then
+						pickers[prop]:Set(col)
+					end
+				end
+				showThemePreview(preset)
+			end
+		end,
+	})
+
+	-- Random Theme Generator
+	groupbox:AddButton({
+		Text = "Generate Random Theme",
+		Callback = function()
+			local td = self:GenerateRandomTheme()
+			if td then
+				self:ApplyTheme(td)
+				for prop, col in pairs(td) do
+					currentCustomTheme[prop] = col
+					if pickers[prop] and pickers[prop].Set then
+						pickers[prop]:Set(col)
+					end
+				end
+				showThemePreview(td)
+			end
+		end,
+	})
+
+	-- Custom Theme Presets (save your own theme combinations as named files)
+	groupbox:AddTextbox({
+		Text = "Preset Name",
+		Placeholder = "Enter name...",
+		Flag = "__theme_preset_name",
+		Callback = function(txt)
+			newPresetName = txt
+		end,
+	})
+
+	local presetDropdown = groupbox:AddDropdown({
+		Text = "My Presets",
+		List = self:GetPresetList(),
+		Default = selectedPreset,
+		Flag = "__theme_preset_list",
+		Callback = function(val)
+			selectedPreset = val
+		end,
+	})
+
+	local function refreshPresets()
+		local lst = self:GetPresetList()
+		presetDropdown:Refresh(lst, false)
+		selectedPreset = presetDropdown:Get()
+	end
+
+	groupbox:AddButton({
+		Text = "Save Current Theme",
+		Callback = function()
+			local target = (newPresetName ~= "" and newPresetName) or selectedPreset
+			if self:SavePreset(target, currentCustomTheme) then
+				refreshPresets()
+			end
+		end,
+	})
+
+	groupbox:AddButton({
+		Text = "Load Preset",
+		Callback = function()
+			if selectedPreset and selectedPreset ~= "" then
+				local td = self:LoadPreset(selectedPreset)
+				if td then
+					for prop, col in pairs(td) do
+						currentCustomTheme[prop] = col
+						if pickers[prop] and pickers[prop].Set then
+							pickers[prop]:Set(col)
+						end
+					end
+				end
+			end
+		end,
+	})
+
+	groupbox:AddButton({
+		Text = "Delete Preset",
+		Risky = true,
+		Callback = function()
+			if selectedPreset and selectedPreset ~= "" then
+				self:DeletePreset(selectedPreset)
+				refreshPresets()
+			end
+		end,
+	})
+
+	-- Theme Import / Export (share themes via clipboard or pasted JSON / files)
+	groupbox:AddButton({
+		Text = "Export Theme (Clipboard)",
+		Callback = function()
+			local ok, json = self:ExportClipboard(currentCustomTheme)
+			if SettingsManager.Library then
+				SettingsManager.Library:Notify({
+					Title = "Theme Manager",
+					Text = ok and "Theme JSON copied to clipboard!" or "Clipboard not supported by this executor.",
+					Duration = 3,
+					Type = ok and "Success" or "Warning",
+				})
+			end
+		end,
+	})
+
+	groupbox:AddButton({
+		Text = "Import Theme (Clipboard)",
+		Callback = function()
+			local td = self:ImportClipboard()
+			if td then
+				for prop, col in pairs(td) do
+					currentCustomTheme[prop] = col
+					if pickers[prop] and pickers[prop].Set then
+						pickers[prop]:Set(col)
+					end
+				end
+				showThemePreview(td)
+				if SettingsManager.Library then
+					SettingsManager.Library:Notify({ Title = "Theme Manager", Text = "Theme imported from clipboard!", Duration = 3, Type = "Success" })
+				end
+			elseif SettingsManager.Library then
+				SettingsManager.Library:Notify({
+					Title = "Theme Manager",
+					Text = "No valid theme in clipboard. Export one first or paste JSON below.",
+					Duration = 3,
+					Type = "Warning",
+				})
+			end
+		end,
+	})
+
+	groupbox:AddTextbox({
+		Text = "Import Theme (Paste JSON)",
+		Placeholder = "Paste exported theme JSON...",
+		Flag = "__theme_import_json",
+		Callback = function(txt)
+			importedJson = txt
+		end,
+	})
+
+	groupbox:AddButton({
+		Text = "Apply Pasted Theme",
+		Callback = function()
+			local td = self:DecodeTheme(importedJson)
+			if td then
+				for prop, col in pairs(td) do
+					currentCustomTheme[prop] = col
+					if pickers[prop] and pickers[prop].Set then
+						pickers[prop]:Set(col)
+					end
+				end
+				showThemePreview(td)
+				if SettingsManager.Library then
+					SettingsManager.Library:Notify({ Title = "Theme Manager", Text = "Theme applied from JSON!", Duration = 3, Type = "Success" })
+				end
+			elseif SettingsManager.Library then
+				SettingsManager.Library:Notify({ Title = "Theme Manager", Text = "Invalid theme JSON — cannot apply.", Duration = 3, Type = "Warning" })
 			end
 		end,
 	})
@@ -451,6 +1003,21 @@ function ThemeManager:BuildThemeSection(groupbox)
 		Callback = function(col)
 			currentCustomTheme.OutlineColor = col
 			SettingsManager.Library:SetThemeColor("OutlineColor", col)
+		end,
+	})
+
+	-- Font Size slider: universal, live-rescales every text element in the menu
+	groupbox:AddSlider({
+		Text     = "Font Size",
+		Min      = 10,
+		Max      = 20,
+		Default  = SettingsManager.Library.Theme.FontSize or 13,
+		Suffix   = "px",
+		Flag     = "ui_font_size",
+		Callback = function(size)
+			if SettingsManager.Library and SettingsManager.Library.SetFontSize then
+				SettingsManager.Library:SetFontSize(size)
+			end
 		end,
 	})
 
@@ -607,30 +1174,36 @@ function ThemeManager:BuildThemeSection(groupbox)
 			if lib then
 				lib:Notify({ Title = "Settings Manager", Text = "Settings manager opened!", Duration = 1 })
 			end
-        local sWindow = lib:CreateWindow({ Title = "Skeetware Settings", Size = UDim2.fromOffset(520, 420) })
-        settingsWindow = sWindow
-        SettingsManager._SettingsWindow = sWindow
-        local sTab = sWindow:AddTab("Settings", lib.Icons and lib.Icons.Settings or nil)
-        local sGroup = sTab:AddGroupbox({ Title = "Settings" })
-        SaveManager:BuildConfigSection(sGroup)
-        ThemeManager:BuildThemeSection(sGroup)
-        setSettingsBtnText("Close Settings Manager")
-        -- Apply universal custom font and gradient to all text elements in the settings window
-        if lib and lib.Theme and lib.Theme.Font then
-            for _, obj in ipairs(sWindow.Root:GetDescendants()) do
-                if obj:IsA("TextLabel") or obj:IsA("TextButton") then
-                    obj.FontFace = lib.Theme.Font
-                    obj.TextSize = lib.Theme.FontSize or 12
-                    local grad = Instance.new("UIGradient")
-                    grad.Rotation = 90
-                    grad.Color = ColorSequence.new({
-                        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-                        ColorSequenceKeypoint.new(1, Color3.fromRGB(163, 163, 163))
-                    })
-                    grad.Parent = obj
-                end
-            end
-        end
+			local sWindow = lib:CreateWindow({ Title = "Axiom Settings", Size = UDim2.fromOffset(520, 420) })
+			settingsWindow = sWindow
+			SettingsManager._SettingsWindow = sWindow
+			local sTab = sWindow:AddTab("Settings", lib.Icons and lib.Icons.Settings or nil)
+			local sGroup = sTab:AddGroupbox({ Title = "Settings" })
+			SaveManager:BuildConfigSection(sGroup)
+			ThemeManager:BuildThemeSection(sGroup)
+			setSettingsBtnText("Close Settings Manager")
+
+			-- Apply universal custom font and gradient to all text elements in the settings window
+			if lib and lib.Theme and lib.Theme.Font then
+				for _, obj in ipairs(sWindow.Root:GetDescendants()) do
+					if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+						if typeof(lib.Theme.Font) == "Font" then
+							obj.FontFace = lib.Theme.Font
+						else
+							obj.Font = lib.Theme.Font
+						end
+						if not obj:IsA("TextBox") and not obj:FindFirstChildOfClass("UIGradient") then
+							local grad = Instance.new("UIGradient")
+							grad.Rotation = 90
+							grad.Color = ColorSequence.new({
+								ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+								ColorSequenceKeypoint.new(1, Color3.fromRGB(163, 163, 163))
+							})
+							grad.Parent = obj
+						end
+					end
+				end
+			end
 		end,
 	})
 end
