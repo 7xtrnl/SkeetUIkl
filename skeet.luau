@@ -1,6 +1,6 @@
 --[[
 	══════════════════════════════════════════════════════════════════════════════
-	  SKEETWARE UI v5.0 — Pixel-Perfect Hard Edge Skeet Design Engine
+	  AXIOM UI v5.0 — Pixel-Perfect Hard Edge Skeet Design Engine
 	  • Pure Authentic Skeet Styling (Clean Bevels, Razor-Sharp Borders, No Fake Glow)
 	  • 100% Native 2D Saturation/Value Palette & 7-Stop Hue Rainbow Bar
 	  • Fully Dynamic Live Theme System (Fonts, Accents, Backgrounds, Outlines)
@@ -41,18 +41,18 @@ local function getSafeGuiParent()
 	return LocalPlayer:WaitForChild("PlayerGui")
 end
 
-local oldGui = getSafeGuiParent():FindFirstChild("SkeetwareUI")
+local oldGui = getSafeGuiParent():FindFirstChild("AxiomUI")
 if oldGui then oldGui:Destroy() end
 
 -- Clean up old blur effects
 pcall(function()
 	local lighting = game:GetService("Lighting")
-	local oldBlur = lighting:FindFirstChild("SkeetwareBlur")
+	local oldBlur = lighting:FindFirstChild("AxiomBlur")
 	if oldBlur then oldBlur:Destroy() end
 end)
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SkeetwareUI"
+screenGui.Name = "AxiomUI"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -63,7 +63,7 @@ local blurEffect = nil
 pcall(function()
 	local lighting = game:GetService("Lighting")
 	blurEffect = Instance.new("BlurEffect")
-	blurEffect.Name = "SkeetwareBlur"
+	blurEffect.Name = "AxiomBlur"
 	blurEffect.Size = 0
 	blurEffect.Parent = lighting
 end)
@@ -129,6 +129,7 @@ local Library = {
 	Flags     = {},
 	Registry  = {},
 	FlagRegistry = {},
+	TextSizeRegistry = {},
 	ThemeSignals = {},
 	KeybindList = nil,
 	Watermark   = nil,
@@ -238,6 +239,14 @@ function Util.Create(class, props, children)
 		-- Default text size when using the custom font
 		if not (props and props.TextSize) then
 			inst.TextSize = 12
+		end
+		-- Universal font-size scaling: remember how far above/below the base
+		-- size this element sits so Library:SetFontSize can rescale it live
+		if Library.TextSizeRegistry then
+			table.insert(Library.TextSizeRegistry, {
+				Instance = inst,
+				Delta    = inst.TextSize - (Library.Theme.FontSize or 12),
+			})
 		end
 		-- Subtle white-to-gray gradient for polished text appearance
 		if class ~= "TextBox" then
@@ -635,7 +644,7 @@ local function initSnow()
 	if snowLayer then return end
 
 	snowLayer = New("Frame", {
-		Name = "SkeetwareSnow",
+		Name = "AxiomSnow",
 		Size = UDim2.fromScale(1, 1),
 		Position = UDim2.fromScale(0, 0),
 		BackgroundTransparency = 1,
@@ -698,7 +707,7 @@ initSnow()
 -- WATERMARK HUD
 --============================================================================--
 function Library:CreateWatermark(customTitle)
-	local title = customTitle or "skeetware.cc"
+	local title = customTitle or "axiom.cc"
 	local wmOuter, wmInner = Util.CreateHardBorder(screenGui, UDim2.fromOffset(300, 24), UDim2.fromOffset(20, 20), Library.Theme.MainTop, Library.Theme.MainBottom, true)
 	wmOuter.ZIndex = 50
 	Util.AddSkeetGradientBar(wmInner, 2)
@@ -995,7 +1004,7 @@ end
 --============================================================================--
 function Library:CreateWindow(cfg)
 	cfg = cfg or {}
-	local title   = cfg.Title or "skeetware.cc"
+	local title   = cfg.Title or "axiom.cc"
 	local winSize = cfg.Size or UDim2.fromOffset(720, 520)
 
 	local winOuter, winInner = Util.CreateHardBorder(screenGui, winSize, UDim2.fromScale(0.5, 0.5), Library.Theme.MainTop, Library.Theme.MainBottom, true)
@@ -1225,6 +1234,7 @@ function Library:CreateWindow(cfg)
 		TextColor3 = Library.Theme.Text,
 		PlaceholderText = "Search...",
 		PlaceholderColor3 = Library.Theme.TextDark,
+		Text = "",
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ClearTextOnFocus = false,
 		ZIndex = 12,
@@ -1444,7 +1454,7 @@ function Library:CreateWindow(cfg)
 		TextSize = Library.Theme.FontSize - 2,
 		TextColor3 = Library.Theme.TextDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = string.format("skeetware | %s", LocalPlayer and LocalPlayer.DisplayName or "User"),
+		Text = string.format("axiom | %s", LocalPlayer and LocalPlayer.DisplayName or "User"),
 		ZIndex = 11,
 		Parent = footerBar,
 	})
@@ -2653,6 +2663,7 @@ function Library:CreateWindow(cfg)
 					Font = Library.Theme.FontBold,
 					TextSize = Library.Theme.FontSize,
 					TextColor3 = Library.Theme.Accent1,
+					Text = "",
 					TextXAlignment = Enum.TextXAlignment.Right,
 					ClearTextOnFocus = true,
 					Visible = false,
@@ -3438,6 +3449,28 @@ function Library:SetThemeColor(colorType, newColor)
 	end
 end
 
+-- Universal font size: rescales EVERY text element in the menu live.
+-- Each registered instance stores its offset from the base size, so
+-- titles, labels, values etc. keep their relative hierarchy.
+function Library:SetFontSize(size)
+	size = math.clamp(math.floor(size + 0.5), 10, 20)
+	Library.Theme.FontSize = size
+	for _, item in ipairs(Library.TextSizeRegistry) do
+		local inst = item.Instance
+		if inst and inst.Parent then
+			pcall(function()
+				inst.TextSize = size + item.Delta
+			end)
+		end
+	end
+	if Library.ThemeSignals.FontSize then
+		for _, cb in ipairs(Library.ThemeSignals.FontSize) do
+			pcall(cb, size)
+		end
+	end
+	return size
+end
+
 function Library:SetTheme(themeTable)
 	for name, col in pairs(themeTable or {}) do
 		Library:SetThemeColor(name, col)
@@ -3472,7 +3505,7 @@ function Library:Unload()
 			screenGui:Destroy()
 		end)
 	end
-print(("[Skeetware] build %s loaded | searchbar = 'Search...' | %d registered theme keys"):format(
+print(("[Axiom] build %s loaded | searchbar = 'Search...' | %d registered theme keys"):format(
 	Library.Build or "?", (function() local n = 0 for _ in pairs(Library.ThemeSignals) do n = n + 1 end return n end)()))
 
 return Library
