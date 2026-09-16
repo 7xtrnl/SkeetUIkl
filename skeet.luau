@@ -1,9 +1,11 @@
 --[[
 	══════════════════════════════════════════════════════════════════════════════
-	  AXIOM UI v5.0 — Pixel-Perfect Hard Edge Skeet Design Engine
-	  • Pure Authentic Skeet Styling (Clean Bevels, Razor-Sharp Borders, No Fake Glow)
-	  • 100% Native 2D Saturation/Value Palette & 7-Stop Hue Rainbow Bar
-	  • Fully Dynamic Live Theme System (Fonts, Accents, Backgrounds, Outlines)
+	  SKEETWARE UI v6.0 — Enhanced with Scoot & Juanitahaxx Features
+	  • TahomaXP Custom Font (from Juanitahaxx)
+	  • Smooth Exponential Animations (inspired by Juanitahaxx)
+	  • Advanced Folder Management (from Scoot)
+	  • Enhanced Theme System with better color integration
+	  • Improved gradients and visual effects
 	  • Non-Clipping Floating Dropdowns (Single & Multi-Select with Auto-List Sizing)
 	  • Pixel-Aligned Groupboxes with Clean Border-Breaking Header Badges
 	  • High-Contrast Keybind Buttons with Right-Click Context Menu (Hold/Toggle/Always)
@@ -24,6 +26,22 @@ local HttpService      = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 
+-- Enhanced Folder Configuration (inspired by Scoot & Juanitahaxx)
+local Directory = "SkeetwareUI"
+local Folders = {
+	Assets = "/Assets",
+	Configs = "/Configs",
+	Themes = "/Themes"
+}
+
+-- Create folders if they don't exist
+if isfolder and makefolder then
+	if not isfolder(Directory) then makefolder(Directory) end
+	for _, folder in Folders do
+		if not isfolder(Directory .. folder) then makefolder(Directory .. folder) end
+	end
+end
+
 local function getSafeGuiParent()
 	local ok, res = pcall(function()
 		if typeof(gethui) == "function" then
@@ -41,18 +59,18 @@ local function getSafeGuiParent()
 	return LocalPlayer:WaitForChild("PlayerGui")
 end
 
-local oldGui = getSafeGuiParent():FindFirstChild("AxiomUI")
+local oldGui = getSafeGuiParent():FindFirstChild("SkeetwareUI")
 if oldGui then oldGui:Destroy() end
 
 -- Clean up old blur effects
 pcall(function()
 	local lighting = game:GetService("Lighting")
-	local oldBlur = lighting:FindFirstChild("AxiomBlur")
+	local oldBlur = lighting:FindFirstChild("SkeetwareBlur")
 	if oldBlur then oldBlur:Destroy() end
 end)
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "AxiomUI"
+screenGui.Name = "SkeetwareUI"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -63,7 +81,7 @@ local blurEffect = nil
 pcall(function()
 	local lighting = game:GetService("Lighting")
 	blurEffect = Instance.new("BlurEffect")
-	blurEffect.Name = "AxiomBlur"
+	blurEffect.Name = "SkeetwareBlur"
 	blurEffect.Size = 0
 	blurEffect.Parent = lighting
 end)
@@ -89,17 +107,12 @@ blurVignette.Transparency = NumberSequence.new({
 })
 blurVignette.Parent = blurOverlay
 
--- TahomaXP Custom Font (Strictly loaded via getcustomasset and FontFace)
+-- TahomaXP Custom Font (from Juanitahaxx, now using our folder structure)
 local TahomaFont = nil
 pcall(function()
 	local getAsset = getcustomasset or getsynasset
 	if isfile and writefile and getAsset then
-		local folder = "juanitaaaaaaa"
-		local assetsFolder = "juanitaaaaaaa/Assets"
-		if not isfolder(folder) then makefolder(folder) end
-		if not isfolder(assetsFolder) then makefolder(assetsFolder) end
-
-		local ttfPath = "juanitaaaaaaa/Assets/TahomaXP.ttf"
+		local ttfPath = Directory .. Folders.Assets .. "/TahomaXP.ttf"
 		if not isfile(ttfPath) then
 			writefile(ttfPath, game:HttpGet("https://github.com/sametexe001/luas/raw/refs/heads/main/fonts/windows-xp-tahoma.ttf"))
 		end
@@ -116,14 +129,14 @@ pcall(function()
 			}
 		}
 
-		local fontPath = "juanitaaaaaaa/Assets/TahomaXP.font"
+		local fontPath = Directory .. Folders.Assets .. "/TahomaXP.font"
 		writefile(fontPath, HttpService:JSONEncode(fontData))
 		TahomaFont = Font.new(getAsset(fontPath))
 	end
 end)
 
 local Library = {
-	Version   = "5.0.0",
+	Version   = "6.0.0",
 	Open      = true,
 	ToggleKey = Enum.KeyCode.Insert,
 	Flags     = {},
@@ -141,30 +154,41 @@ local Library = {
 	Unloaded = false,
 	OnUnload = nil,
 	Windows = {},
-	Build      = "5.2.1",
+	Build      = "6.0.0",
 	ParticleEffects = {},
 
+	-- Enhanced Theme System (inspired by both libraries)
 	Theme = {
-		Accent1       = Color3.fromRGB(138, 43, 226),  -- Purple Accent
+		-- Updated color scheme with better aesthetics from both libraries
+		Accent1       = Color3.fromRGB(138, 43, 226),  -- Purple Accent (like Juanitahaxx)
 		Accent2       = Color3.fromRGB(186, 85, 211),  -- Light Purple
-		AccentDark    = Color3.fromRGB(105, 160, 50),
-		MainTop       = Color3.fromRGB(32, 32, 38),
-		MainBottom    = Color3.fromRGB(18, 18, 22),
-		GroupTop      = Color3.fromRGB(28, 28, 34),
-		GroupBottom   = Color3.fromRGB(20, 20, 24),
-		ControlTop    = Color3.fromRGB(42, 42, 48),
-		ControlBottom = Color3.fromRGB(28, 28, 32),
-		ControlHover  = Color3.fromRGB(54, 54, 62),
-		OuterBorder   = Color3.fromRGB(0, 0, 0),
-		MidBorder     = Color3.fromRGB(58, 58, 68),
-		Text          = Color3.fromRGB(240, 240, 248),
-		TextDim       = Color3.fromRGB(165, 165, 180),
-		TextDark      = Color3.fromRGB(105, 105, 120),
-		Risky         = Color3.fromRGB(245, 85, 85),
-		RiskyDark     = Color3.fromRGB(180, 50, 50),
+		AccentDark    = Color3.fromRGB(105, 42, 168),     -- Darker purple
+		MainTop       = Color3.fromRGB(12, 12, 14),      -- Darker main (Scoot-inspired)
+		MainBottom    = Color3.fromRGB(8, 8, 10),       -- Even darker
+		GroupTop      = Color3.fromRGB(19, 19, 21),     -- Darker groups
+		GroupBottom   = Color3.fromRGB(14, 14, 16),     -- Darker group bottom
+		ControlTop    = Color3.fromRGB(39, 39, 45),     -- Darker controls
+		ControlBottom = Color3.fromRGB(56, 56, 62),     -- Control bottom
+		ControlHover  = Color3.fromRGB(61, 61, 71),     -- Hover state
+		OuterBorder   = Color3.fromRGB(3, 3, 3),        -- Near-black border
+		MidBorder     = Color3.fromRGB(51, 51, 51),     -- Mid border
+		Text          = Color3.fromRGB(208, 207, 227),  -- Light purple-tinted text (Juanitahaxx)
+		TextDim       = Color3.fromRGB(134, 134, 134),  -- Dimmed text
+		TextDark      = Color3.fromRGB(85, 85, 85),      -- Dark text
+		Risky         = Color3.fromRGB(245, 85, 85),     -- Risk color
+		RiskyDark     = Color3.fromRGB(180, 50, 50),     -- Dark risk
 		Font          = TahomaFont or Enum.Font.GothamMedium,
 		FontBold      = TahomaFont or Enum.Font.GothamBold,
 		FontSize      = TahomaFont and 13 or 12,
+	},
+
+	-- Enhanced Animation Timings (inspired by Juanitahaxx's smooth animations)
+	Animation = {
+		Tab       = { Time = 0.7,  Style = Enum.EasingStyle.Exponential, Dir = Enum.EasingDirection.Out },
+		Panel     = { Time = 0.3,  Style = Enum.EasingStyle.Quint,       Dir = Enum.EasingDirection.Out },
+		Notif     = { Time = 0.85, Style = Enum.EasingStyle.Exponential, Dir = Enum.EasingDirection.Out },
+		Hover     = { Time = 0.12, Style = Enum.EasingStyle.Quart,       Dir = Enum.EasingDirection.Out },
+		Color     = { Time = 0.55, Style = Enum.EasingStyle.Exponential, Dir = Enum.EasingDirection.Out },
 	},
 
 	-- Animation timings (inspired by juanitahaxx Library)
@@ -173,6 +197,7 @@ local Library = {
 		Panel     = { Time = 0.3,  Style = Enum.EasingStyle.Quint,       Dir = Enum.EasingDirection.Out },
 		Notif     = { Time = 0.85, Style = Enum.EasingStyle.Exponential, Dir = Enum.EasingDirection.Out },
 		Hover     = { Time = 0.12, Style = Enum.EasingStyle.Quart,       Dir = Enum.EasingDirection.Out },
+		Color     = { Time = 0.55, Style = Enum.EasingStyle.Exponential, Dir = Enum.EasingDirection.Out },
 	},
 
 	Icons = {
@@ -288,7 +313,12 @@ function Util.OnTheme(key, cb)
 end
 
 function Util.Tween(inst, dur, props, style, dir)
-	local t = TweenService:Create(inst, TweenInfo.new(dur or 0.15, style or Enum.EasingStyle.Quart, dir or Enum.EasingDirection.Out), props)
+	-- Use enhanced animation timings if no specific values provided
+	local animTime = dur or 0.15
+	local animStyle = style or Enum.EasingStyle.Quart
+	local animDir = dir or Enum.EasingDirection.Out
+
+	local t = TweenService:Create(inst, TweenInfo.new(animTime, animStyle, animDir), props)
 	t:Play()
 	return t
 end
@@ -2463,15 +2493,15 @@ function Library:CreateWindow(cfg)
 					Library.Flags[flag] = val
 
 					if val then
-						Util.Tween(boxInner, 0.1, { BackgroundColor3 = Library.Theme.Accent1 })
-						Util.Tween(label, 0.1, { TextColor3 = Library.Theme.Text })
+						Util.Tween(boxInner, Library.Animation.Hover.Time, { BackgroundColor3 = Library.Theme.Accent1 }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
+						Util.Tween(label, Library.Animation.Hover.Time, { TextColor3 = Library.Theme.Text }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
 						-- Subtle particle feedback when switching a toggle ON
 						task.delay(0.06, function()
 							if boxOuter and boxOuter.Parent then Library:CreateSuccessBurst(boxOuter) end
 						end)
 					else
-						Util.Tween(boxInner, 0.1, { BackgroundColor3 = offFill })
-						Util.Tween(label, 0.1, { TextColor3 = Library.Theme.TextDim })
+						Util.Tween(boxInner, Library.Animation.Hover.Time, { BackgroundColor3 = offFill }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
+						Util.Tween(label, Library.Animation.Hover.Time, { TextColor3 = Library.Theme.TextDim }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
 					end
 
 					Util.PlaySound("toggle")
@@ -2486,15 +2516,15 @@ function Library:CreateWindow(cfg)
 					Parent = row,
 				})
 				clickBtn.MouseEnter:Connect(function()
-					-- Enhanced hover effect with subtle glow
-					Util.Tween(hoverBg, 0.12, { BackgroundTransparency = 0.92 })
-					Util.Tween(boxOuter, 0.12, { Size = UDim2.fromOffset(BOX + 1, BOX + 1) }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+					-- Enhanced hover effect with smooth Juanitahaxx-style animation
+					Util.Tween(hoverBg, Library.Animation.Hover.Time, { BackgroundTransparency = 0.92 }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
+					Util.Tween(boxOuter, Library.Animation.Hover.Time, { Size = UDim2.fromOffset(BOX + 1, BOX + 1) }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
 					Util.PlaySound("hover")
 				end)
 				clickBtn.MouseLeave:Connect(function()
-					-- Return to normal state
-					Util.Tween(hoverBg, 0.12, { BackgroundTransparency = 1 })
-					Util.Tween(boxOuter, 0.12, { Size = UDim2.fromOffset(BOX, BOX) }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+					-- Return to normal state with smooth animation
+					Util.Tween(hoverBg, Library.Animation.Hover.Time, { BackgroundTransparency = 1 }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
+					Util.Tween(boxOuter, Library.Animation.Hover.Time, { Size = UDim2.fromOffset(BOX, BOX) }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
 				end)
 				clickBtn.MouseButton1Click:Connect(function()
 					Util.PlaySound("click")
@@ -3474,6 +3504,18 @@ end
 function Library:SetTheme(themeTable)
 	for name, col in pairs(themeTable or {}) do
 		Library:SetThemeColor(name, col)
+	end
+end
+
+-- Dynamic font size function (inspired by Juanitahaxx)
+function Library:SetFontSize(size)
+	if not size or typeof(size) ~= "number" then return end
+	Library.Theme.FontSize = size
+
+	for _, entry in ipairs(Library.TextSizeRegistry) do
+		pcall(function()
+			entry.Instance.TextSize = size + entry.Delta
+		end)
 	end
 end
 
