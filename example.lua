@@ -10,10 +10,10 @@
 --]]
 
 --══════════════════════════════ LOADER ═══════════════════════════════
-local REPO = "https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/main/"
 
-local Library         = loadstring(game:HttpGet(REPO .. "ui.lua"))()
-local SettingsManager = loadstring(game:HttpGet(REPO .. "settingsmanager.luau"))()
+
+local Library         = loadstring(game:HttpGet("https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/refs/heads/main/skeet.luau"))()
+local SettingsManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/refs/heads/main/settingsmanager.luau"))()
 
 -- Expose globally so other scripts / the console can reach them
 if getgenv then
@@ -176,8 +176,25 @@ SettingsManager.SaveManager:BuildConfigSection(configGroup)
 SettingsManager.ThemeManager:BuildThemeSection(uiGroup)
 
 --══════════════════════════ HUD & FINALIZE ═══════════════════════════
-Library:CreateWatermark("axiom.cc") -- live fps/ping HUD, draggable
-Library:CreateKeybindList()             -- draggable active-keybinds list
+Library:CreateWatermark("axiom.cc") -- live fps/ping HUD, auto-fitting, draggable
+Library:CreateKeybindList()         -- draggable active-keybinds list
+local Logger = Library:CreateLogger({ Title = "EVENTS LOG" }) -- draggable logger HUD with rainbow animated hue gradient
+
+-- Toggle for Event Logger in UI Settings
+uiGroup:AddToggle({
+	Text = "Show Event Logger",
+	Default = true,
+	Flag = "ui_show_logger",
+	Callback = function(state)
+		Logger:SetVisible(state)
+	end,
+})
+
+-- Log initial startup events
+Library:Log("Axiom UI v6.1 loaded with Juanitahaxx & Scoot design bases", "SYSTEM")
+Library:Log("Exact TahomaXP font (12px) initialized", "SYSTEM")
+Library:Log("Rainbow animated hue gradient active on window & HUDs", "VISUALS")
+Library:Log("Settings & Config Manager ready", "CONFIG")
 
 -- Runs when Library:Unload() is called (Settings → Unload Script, etc.)
 Library.OnUnload = function()
