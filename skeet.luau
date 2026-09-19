@@ -107,16 +107,25 @@ blurVignette.Transparency = NumberSequence.new({
 })
 blurVignette.Parent = blurOverlay
 
--- TahomaXP Custom Font (from Juanitahaxx, now using our folder structure)
+-- TahomaXP Custom Font (Exact implementation from Juanitahaxx)
 local TahomaFont = nil
 pcall(function()
 	local getAsset = getcustomasset or getsynasset
 	if isfile and writefile and getAsset then
-		local ttfPath = Directory .. Folders.Assets .. "/TahomaXP.ttf"
-		if not isfile(ttfPath) then
-			writefile(ttfPath, game:HttpGet("https://github.com/sametexe001/luas/raw/refs/heads/main/fonts/windows-xp-tahoma.ttf"))
+		local ttfUrl = "https://github.com/sametexe001/luas/raw/refs/heads/main/fonts/windows-xp-tahoma.ttf"
+		local assetTtf = Directory .. Folders.Assets .. "/TahomaXP.ttf"
+		local rootTtf = "TahomaXP.ttf"
+		local rootNoExt = "TahomaXP"
+
+		-- Ensure TTF exists locally
+		if not isfile(assetTtf) and not isfile(rootTtf) and not isfile(rootNoExt) then
+			local ttfData = game:HttpGet(ttfUrl)
+			pcall(writefile, assetTtf, ttfData)
+			pcall(writefile, rootTtf, ttfData)
+			pcall(writefile, rootNoExt, ttfData)
 		end
 
+		local usablePath = isfile(assetTtf) and assetTtf or (isfile(rootTtf) and rootTtf or rootNoExt)
 		local fontData = {
 			name = "TahomaXP",
 			faces = {
@@ -124,7 +133,7 @@ pcall(function()
 					name = "TahomaXP",
 					weight = 400,
 					style = "Regular",
-					assetId = getAsset(ttfPath)
+					assetId = getAsset(usablePath)
 				}
 			}
 		}
@@ -136,7 +145,7 @@ pcall(function()
 end)
 
 local Library = {
-	Version   = "6.0.0",
+	Version   = "6.1.0",
 	Open      = true,
 	ToggleKey = Enum.KeyCode.Insert,
 	Flags     = {},
@@ -146,6 +155,7 @@ local Library = {
 	ThemeSignals = {},
 	KeybindList = nil,
 	Watermark   = nil,
+	Logger      = nil,
 	ScreenGui   = screenGui,
 	SoundsEnabled = true,
 	SearchQuery = "",
@@ -154,44 +164,74 @@ local Library = {
 	Unloaded = false,
 	OnUnload = nil,
 	Windows = {},
-	Build      = "6.0.0",
+	Build      = "6.1.0",
 	ParticleEffects = {},
 
-	-- Enhanced Theme System (inspired by both libraries)
+	-- Juanitahaxx & Scoot Designed Theme System
 	Theme = {
-		-- Updated color scheme with better aesthetics from both libraries
-		Accent1       = Color3.fromRGB(138, 43, 226),  -- Purple Accent (like Juanitahaxx)
-		Accent2       = Color3.fromRGB(186, 85, 211),  -- Light Purple
-		AccentDark    = Color3.fromRGB(105, 42, 168),     -- Darker purple
-		MainTop       = Color3.fromRGB(12, 12, 14),      -- Darker main (Scoot-inspired)
-		MainBottom    = Color3.fromRGB(8, 8, 10),       -- Even darker
-		GroupTop      = Color3.fromRGB(19, 19, 21),     -- Darker groups
-		GroupBottom   = Color3.fromRGB(14, 14, 16),     -- Darker group bottom
-		ControlTop    = Color3.fromRGB(39, 39, 45),     -- Darker controls
-		ControlBottom = Color3.fromRGB(56, 56, 62),     -- Control bottom
-		ControlHover  = Color3.fromRGB(61, 61, 71),     -- Hover state
-		OuterBorder   = Color3.fromRGB(3, 3, 3),        -- Near-black border
-		MidBorder     = Color3.fromRGB(51, 51, 51),     -- Mid border
-		Text          = Color3.fromRGB(208, 207, 227),  -- Light purple-tinted text (Juanitahaxx)
-		TextDim       = Color3.fromRGB(134, 134, 134),  -- Dimmed text
-		TextDark      = Color3.fromRGB(85, 85, 85),      -- Dark text
+		-- Default Juanitahaxx Palette
+		Accent1       = Color3.fromRGB(176, 176, 209),  -- Juanitahaxx Soft Lavender Accent
+		Accent2       = Color3.fromRGB(196, 196, 225),  -- Light Accent Shimmer
+		AccentDark    = Color3.fromRGB(130, 130, 170),  -- Deep Accent
+		MainTop       = Color3.fromRGB(12, 12, 12),     -- Juanitahaxx Deep Background
+		MainBottom    = Color3.fromRGB(10, 10, 10),     -- Bottom shade
+		GroupTop      = Color3.fromRGB(19, 19, 19),     -- Juanitahaxx Inline Section Frame
+		GroupBottom   = Color3.fromRGB(15, 15, 15),     -- Bottom inline shade
+		ControlTop    = Color3.fromRGB(39, 39, 39),     -- Juanitahaxx Element
+		ControlBottom = Color3.fromRGB(32, 32, 32),     -- Element bottom
+		ControlHover  = Color3.fromRGB(61, 61, 61),     -- Juanitahaxx Hovered Element
+		OuterBorder   = Color3.fromRGB(3, 3, 3),        -- Juanitahaxx Border
+		MidBorder     = Color3.fromRGB(51, 51, 51),     -- Juanitahaxx Outline
+		Text          = Color3.fromRGB(208, 207, 227),  -- Juanitahaxx Text
+		TextDim       = Color3.fromRGB(134, 134, 134),  -- Juanitahaxx Inactive Text
+		TextDark      = Color3.fromRGB(80, 80, 80),      -- Dimmed caption
 		Risky         = Color3.fromRGB(245, 85, 85),     -- Risk color
 		RiskyDark     = Color3.fromRGB(180, 50, 50),     -- Dark risk
-		Font          = TahomaFont or Enum.Font.GothamMedium,
-		FontBold      = TahomaFont or Enum.Font.GothamBold,
-		FontSize      = TahomaFont and 13 or 12,
+		Font          = TahomaFont or Enum.Font.SourceSans,
+		FontBold      = TahomaFont or Enum.Font.SourceSansBold,
+		FontSize      = 12,                             -- EXACT SAME SIZE LIKE JUANITAHAXX (12px)
 	},
 
-	-- Enhanced Animation Timings (inspired by Juanitahaxx's smooth animations)
-	Animation = {
-		Tab       = { Time = 0.7,  Style = Enum.EasingStyle.Exponential, Dir = Enum.EasingDirection.Out },
-		Panel     = { Time = 0.3,  Style = Enum.EasingStyle.Quint,       Dir = Enum.EasingDirection.Out },
-		Notif     = { Time = 0.85, Style = Enum.EasingStyle.Exponential, Dir = Enum.EasingDirection.Out },
-		Hover     = { Time = 0.12, Style = Enum.EasingStyle.Quart,       Dir = Enum.EasingDirection.Out },
-		Color     = { Time = 0.55, Style = Enum.EasingStyle.Exponential, Dir = Enum.EasingDirection.Out },
+	-- Built-in Theme Presets
+	Themes = {
+		["Juanitahaxx Lavender"] = {
+			FontColor       = Color3.fromRGB(208, 207, 227),
+			MainColor       = Color3.fromRGB(19, 19, 19),
+			AccentColor     = Color3.fromRGB(176, 176, 209),
+			BackgroundColor = Color3.fromRGB(12, 12, 12),
+			OutlineColor    = Color3.fromRGB(51, 51, 51),
+		},
+		["Scoot Tactical Cyan"] = {
+			FontColor       = Color3.fromRGB(235, 235, 235),
+			MainColor       = Color3.fromRGB(20, 24, 21),
+			AccentColor     = Color3.fromRGB(202, 243, 255),
+			BackgroundColor = Color3.fromRGB(14, 17, 15),
+			OutlineColor    = Color3.fromRGB(42, 49, 45),
+		},
+		["Classic Skeet"] = {
+			FontColor       = Color3.fromRGB(230, 230, 235),
+			MainColor       = Color3.fromRGB(28, 28, 32),
+			AccentColor     = Color3.fromRGB(168, 219, 95),
+			BackgroundColor = Color3.fromRGB(24, 24, 27),
+			OutlineColor    = Color3.fromRGB(0, 0, 0),
+		},
+		["Midnight Purple"] = {
+			FontColor       = Color3.fromRGB(225, 215, 240),
+			MainColor       = Color3.fromRGB(20, 18, 26),
+			AccentColor     = Color3.fromRGB(138, 43, 226),
+			BackgroundColor = Color3.fromRGB(14, 12, 18),
+			OutlineColor    = Color3.fromRGB(48, 42, 60),
+		},
+		["Blood Red"] = {
+			FontColor       = Color3.fromRGB(245, 225, 225),
+			MainColor       = Color3.fromRGB(24, 16, 18),
+			AccentColor     = Color3.fromRGB(240, 65, 75),
+			BackgroundColor = Color3.fromRGB(14, 10, 12),
+			OutlineColor    = Color3.fromRGB(55, 35, 40),
+		}
 	},
 
-	-- Animation timings (inspired by juanitahaxx Library)
+	-- Exponential and Quint easing from Juanitahaxx
 	Animation = {
 		Tab       = { Time = 0.7,  Style = Enum.EasingStyle.Exponential, Dir = Enum.EasingDirection.Out },
 		Panel     = { Time = 0.3,  Style = Enum.EasingStyle.Quint,       Dir = Enum.EasingDirection.Out },
@@ -373,17 +413,24 @@ function Util.CreateHardBorder(parent, size, pos, bgTop, bgBottom, isMainWin)
 	return outer, inner
 end
 
--- Animated rainbow color sequence that cycles hue over time
+--============================================================================--
+-- RAINBOW ANIMATED HUE GRADIENT ENGINE (Juanitahaxx & Scoot Enhanced)
+--============================================================================--
+local RainbowGradients = {}
+local RainbowLabels = {}
+local RainbowHue = 0
+local RainbowPulse = 0
+
 local function buildRainbowColorSequence(offset)
 	offset = offset or 0
 	local stops = {
-		{ 0.00, Color3.fromHSV((0.00 + offset) % 1, 0.85, 1.0) },
-		{ 0.17, Color3.fromHSV((0.17 + offset) % 1, 0.85, 1.0) },
-		{ 0.34, Color3.fromHSV((0.34 + offset) % 1, 0.85, 1.0) },
-		{ 0.50, Color3.fromHSV((0.50 + offset) % 1, 0.85, 1.0) },
-		{ 0.67, Color3.fromHSV((0.67 + offset) % 1, 0.85, 1.0) },
-		{ 0.84, Color3.fromHSV((0.84 + offset) % 1, 0.85, 1.0) },
-		{ 1.00, Color3.fromHSV((1.00 + offset) % 1, 0.85, 1.0) },
+		{ 0.00, Color3.fromHSV((0.00 + offset) % 1, 0.88, 1.0) },
+		{ 0.17, Color3.fromHSV((0.17 + offset) % 1, 0.88, 1.0) },
+		{ 0.34, Color3.fromHSV((0.34 + offset) % 1, 0.88, 1.0) },
+		{ 0.50, Color3.fromHSV((0.50 + offset) % 1, 0.88, 1.0) },
+		{ 0.67, Color3.fromHSV((0.67 + offset) % 1, 0.88, 1.0) },
+		{ 0.84, Color3.fromHSV((0.84 + offset) % 1, 0.88, 1.0) },
+		{ 1.00, Color3.fromHSV((1.00 + offset) % 1, 0.88, 1.0) },
 	}
 	local kps = {}
 	for _, s in ipairs(stops) do
@@ -392,38 +439,96 @@ local function buildRainbowColorSequence(offset)
 	return ColorSequence.new(kps)
 end
 
+function Util.RegisterRainbowGradient(grad)
+	if not grad then return end
+	table.insert(RainbowGradients, grad)
+	pcall(function()
+		grad.Color = buildRainbowColorSequence(RainbowHue)
+	end)
+end
+
+function Util.RegisterRainbowLabel(label, offset)
+	if not label then return end
+	table.insert(RainbowLabels, { Label = label, Offset = offset or 0 })
+end
+
+-- Central synchronized RenderStepped loop for all rainbow elements
+table.insert(Library.Connections, RunService.RenderStepped:Connect(function(dt)
+	if Library.Unloaded then return end
+	RainbowHue = (RainbowHue + dt * 0.12) % 1
+	RainbowPulse = RainbowPulse + dt * 1.8
+
+	local currentSeq = buildRainbowColorSequence(RainbowHue)
+
+	-- Update registered rainbow gradients
+	for i = #RainbowGradients, 1, -1 do
+		local grad = RainbowGradients[i]
+		if grad and grad.Parent then
+			grad.Color = currentSeq
+		else
+			table.remove(RainbowGradients, i)
+		end
+	end
+
+	-- Update registered rainbow labels
+	for i = #RainbowLabels, 1, -1 do
+		local item = RainbowLabels[i]
+		if item.Label and item.Label.Parent then
+			item.Label.TextColor3 = Color3.fromHSV((RainbowHue + item.Offset) % 1, 0.85, 1.0)
+		else
+			table.remove(RainbowLabels, i)
+		end
+	end
+end))
+
 function Util.AddSkeetGradientBar(parent, height)
 	local h = height or 2
 
-	-- Glow base frame (wider, blurred effect behind the bar)
-	local glowBase = New("Frame", {
-		Size = UDim2.new(1, 0, 0, h + 6),
-		Position = UDim2.fromOffset(0, -3),
-		BackgroundColor3 = Color3.fromRGB(140, 100, 255),
-		BackgroundTransparency = 0.55,
+	-- Layer 1: Juanitahaxx 9-Slice Drop Glow Frame
+	local glow = New("ImageLabel", {
+		Name = "RainbowGlow",
+		Size = UDim2.new(1, 24, 0, h + 18),
+		Position = UDim2.new(0.5, 0, 0, -5),
+		AnchorPoint = Vector2.new(0.5, 0),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Image = "http://www.roblox.com/asset/?id=18245826428",
+		ImageTransparency = 0.52,
+		ScaleType = Enum.ScaleType.Slice,
+		SliceCenter = Rect.new(Vector2.new(21, 21), Vector2.new(79, 79)),
+		ZIndex = 8,
+		ClipsDescendants = false,
+		Parent = parent,
+	})
+	local glowGrad = New("UIGradient", {
+		Rotation = 0,
+		Color = buildRainbowColorSequence(RainbowHue),
+		Parent = glow,
+	})
+	Util.RegisterRainbowGradient(glowGrad)
+
+	-- Layer 2: Subtle Blurred Ambient Layer
+	local ambient = New("Frame", {
+		Name = "RainbowAmbient",
+		Size = UDim2.new(1, 0, 0, h + 4),
+		Position = UDim2.fromOffset(0, -2),
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 0.65,
 		BorderSizePixel = 0,
 		ZIndex = 9,
 		ClipsDescendants = false,
 		Parent = parent,
 	})
-	New("UICorner", { CornerRadius = UDim.new(0, h + 3), Parent = glowBase })
-	local glowGrad = New("UIGradient", {
+	local ambGrad = New("UIGradient", {
 		Rotation = 0,
-		Color = buildRainbowColorSequence(0),
-		Parent = glowBase,
+		Color = buildRainbowColorSequence(RainbowHue),
+		Parent = ambient,
 	})
-	New("UIGradient", {
-		Rotation = 0,
-		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.7),
-			NumberSequenceKeypoint.new(0.5, 0.45),
-			NumberSequenceKeypoint.new(1, 0.7),
-		}),
-		Parent = glowBase,
-	})
+	Util.RegisterRainbowGradient(ambGrad)
 
-	-- The actual sharp rainbow bar on top
+	-- Layer 3: Sharp High-Contrast Rainbow Line Bar
 	local bar = New("Frame", {
+		Name = "RainbowBar",
 		Size = UDim2.new(1, 0, 0, h),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
@@ -432,41 +537,12 @@ function Util.AddSkeetGradientBar(parent, height)
 		ClipsDescendants = false,
 		Parent = parent,
 	})
-	New("UICorner", { CornerRadius = UDim.new(0, h), Parent = bar })
-
-	local grad = New("UIGradient", {
+	local barGrad = New("UIGradient", {
 		Rotation = 0,
-		Color = buildRainbowColorSequence(0),
+		Color = buildRainbowColorSequence(RainbowHue),
 		Parent = bar,
 	})
-	New("UIGradient", {
-		Rotation = 0,
-		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.2),
-			NumberSequenceKeypoint.new(0.5, 0),
-			NumberSequenceKeypoint.new(1, 0.2),
-		}),
-		Parent = bar,
-	})
-
-	-- Animate the rainbow: shift hue offset over time
-	local rainbowOffset = 0
-	local glowPulse = 0
-	table.insert(Library.Connections, RunService.RenderStepped:Connect(function(dt)
-		if Library.Unloaded then return end
-		if not bar.Parent then return end
-
-		-- Move rainbow hue
-		rainbowOffset = (rainbowOffset + dt * 0.12) % 1
-		local seq = buildRainbowColorSequence(rainbowOffset)
-		grad.Color = seq
-		glowGrad.Color = seq
-
-		-- Pulse the glow transparency
-		glowPulse = glowPulse + dt * 1.8
-		local pulse = 0.5 + math.sin(glowPulse) * 0.12
-		glowBase.BackgroundTransparency = math.clamp(pulse, 0.38, 0.72)
-	end))
+	Util.RegisterRainbowGradient(barGrad)
 
 	return bar
 end
@@ -804,7 +880,10 @@ function Library:CreateWatermark(customTitle)
 			local fps = math.floor(fpsCount / (tick() - lastFpsUpdate))
 			local ping = math.floor((LocalPlayer and LocalPlayer:GetNetworkPing() or 0.015) * 1000)
 			local okClk, clock = pcall(os.date, "%H:%M")
-			wmLabel.Text = string.format("%s | %s | %d fps | %d ms | %s", title, LocalPlayer and LocalPlayer.DisplayName or "User", fps, ping, okClk and clock or "")
+			local formatted = string.format("%s | %s | %d fps | %d ms | %s", title, LocalPlayer and LocalPlayer.DisplayName or "User", fps, ping, okClk and clock or "")
+			wmLabel.Text = formatted
+			local neededW = math.max(260, wmLabel.TextBounds.X + 36)
+			wmOuter.Size = UDim2.fromOffset(neededW, 24)
 			fpsCount = 0
 			lastFpsUpdate = tick()
 		end
@@ -960,6 +1039,11 @@ function Library:Notify(cfg)
 	local dur      = cfg.Duration or 3.5
 	local nType    = cfg.Type or "Info"
 	local iconId   = cfg.Icon or (nType == "Success" and Library.Icons.Check or (nType == "Warning" and Library.Icons.Alert or Library.Icons.Info))
+
+	-- Auto-log to Logger HUD
+	pcall(function()
+		Library:Log(text, title)
+	end)
 
 	local notifOuter, notifInner = Util.CreateHardBorder(notifHolder, UDim2.fromOffset(270, 56), nil, Library.Theme.MainTop, Library.Theme.MainBottom, true)
 	notifOuter.ClipsDescendants = true
@@ -1226,19 +1310,58 @@ function Library:CreateWindow(cfg)
 		Parent = winInner,
 	})
 
-	local titleLabel = New("TextLabel", {
-		Size = UDim2.new(0.4, 0, 1, 0),
+	-- Juanitahaxx Signature Sinusoidal Animated Wave Title
+	local uppercaseTitle = string.upper(title)
+	local letterWidth = 8
+	local titleLetters = {}
+	local titleWaveSpeed = 2.5
+	local titleWaveHeight = 3.2
+	local titleWaveSpacing = 0.22
+
+	local titleContainer = New("Frame", {
+		Size = UDim2.new(0, math.min(260, #uppercaseTitle * letterWidth + 12), 1, 0),
 		Position = UDim2.fromOffset(10, 0),
 		BackgroundTransparency = 1,
-		Font = Library.Theme.FontBold,
-		TextSize = Library.Theme.FontSize + 1,
-		TextColor3 = Library.Theme.Text,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = string.upper(title),
+		ClipsDescendants = false,
 		ZIndex = 11,
 		Parent = titleBar,
 	})
-	Util.RegisterTheme(titleLabel, "TextColor3", "FontColor")
+
+	for idx = 1, #uppercaseTitle do
+		local char = uppercaseTitle:sub(idx, idx)
+		local letterLbl = New("TextLabel", {
+			Size = UDim2.fromOffset(letterWidth, 20),
+			Position = UDim2.fromOffset((idx - 1) * letterWidth, 6),
+			BackgroundTransparency = 1,
+			Font = Library.Theme.FontBold,
+			TextSize = Library.Theme.FontSize,
+			TextColor3 = Library.Theme.Text,
+			Text = char,
+			ZIndex = 12,
+			Parent = titleContainer,
+		})
+		Util.RegisterTheme(letterLbl, "TextColor3", "FontColor")
+		table.insert(titleLetters, {
+			Label = letterLbl,
+			BaseX = (idx - 1) * letterWidth,
+			BaseY = 6,
+			Index = idx,
+		})
+	end
+
+	table.insert(Library.Connections, RunService.RenderStepped:Connect(function()
+		if Library.Unloaded or not titleContainer.Parent then return end
+		local t = tick()
+		for _, l in ipairs(titleLetters) do
+			if l.Label and l.Label.Parent then
+				local offsetY = math.sin((t * titleWaveSpeed) - (l.Index * titleWaveSpacing)) * titleWaveHeight
+				l.Label.Position = UDim2.fromOffset(l.BaseX, l.BaseY + offsetY)
+				if cfg.RainbowTitle then
+					l.Label.TextColor3 = Color3.fromHSV((RainbowHue + (l.Index * 0.035)) % 1, 0.88, 1.0)
+				end
+			end
+		end
+	end))
 
 	-- Integrated sleek search box on the right of title bar
 	local searchOuter, searchInner = Util.CreateHardBorder(titleBar, UDim2.new(0, 175, 0, 22), UDim2.new(1, -185, 0.5, -11), Library.Theme.ControlTop, Library.Theme.ControlBottom)
@@ -3507,15 +3630,277 @@ function Library:SetTheme(themeTable)
 	end
 end
 
--- Dynamic font size function (inspired by Juanitahaxx)
-function Library:SetFontSize(size)
-	if not size or typeof(size) ~= "number" then return end
-	Library.Theme.FontSize = size
+--============================================================================--
+-- EVENT LOGGER HUD ("Logs")
+--============================================================================--
+function Library:CreateLogger(cfg)
+	cfg = cfg or {}
+	local title = cfg.Title or "EVENT LOGGER"
+	local logSize = cfg.Size or UDim2.fromOffset(460, 210)
+	local logPos = cfg.Position or UDim2.fromOffset(20, 90)
 
-	for _, entry in ipairs(Library.TextSizeRegistry) do
-		pcall(function()
-			entry.Instance.TextSize = size + entry.Delta
+	local logOuter, logInner = Util.CreateHardBorder(screenGui, logSize, logPos, Library.Theme.MainTop, Library.Theme.MainBottom, true)
+	logOuter.ZIndex = 50
+	Util.AddSkeetGradientBar(logInner, 2)
+
+	-- Restore saved logger position from config flags
+	local savedLogPos = Library.Flags["__logger_pos"]
+	if typeof(savedLogPos) == "table" and savedLogPos.X and savedLogPos.Y then
+		logOuter.Position = UDim2.fromOffset(savedLogPos.X, savedLogPos.Y)
+	end
+
+	-- Header Frame
+	local header = New("Frame", {
+		Size = UDim2.new(1, 0, 0, 24),
+		Position = UDim2.fromOffset(0, 2),
+		BackgroundTransparency = 1,
+		ZIndex = 51,
+		Parent = logInner,
+	})
+
+	local headerIcon = New("ImageLabel", {
+		Size = UDim2.fromOffset(13, 13),
+		Position = UDim2.fromOffset(8, 6),
+		BackgroundTransparency = 1,
+		Image = Library.Icons.Sliders,
+		ImageColor3 = Library.Theme.Accent1,
+		ZIndex = 52,
+		Parent = header,
+	})
+	Util.RegisterTheme(headerIcon, "ImageColor3", "AccentColor")
+
+	local headerTitle = New("TextLabel", {
+		Size = UDim2.new(1, -110, 1, 0),
+		Position = UDim2.fromOffset(26, 0),
+		BackgroundTransparency = 1,
+		Font = Library.Theme.FontBold,
+		TextSize = Library.Theme.FontSize,
+		TextColor3 = Library.Theme.Text,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = title,
+		ZIndex = 52,
+		Parent = header,
+	})
+	Util.RegisterTheme(headerTitle, "TextColor3", "FontColor")
+
+	-- Header Action Buttons: Clear & Copy
+	local clearBtn = New("ImageButton", {
+		Size = UDim2.fromOffset(14, 14),
+		Position = UDim2.new(1, -48, 0, 5),
+		BackgroundTransparency = 1,
+		Image = Library.Icons.Trash,
+		ImageColor3 = Library.Theme.TextDim,
+		ZIndex = 52,
+		Parent = header,
+	})
+
+	local copyBtn = New("ImageButton", {
+		Size = UDim2.fromOffset(14, 14),
+		Position = UDim2.new(1, -26, 0, 5),
+		BackgroundTransparency = 1,
+		Image = Library.Icons.Copy,
+		ImageColor3 = Library.Theme.TextDim,
+		ZIndex = 52,
+		Parent = header,
+	})
+
+	-- Divider under header
+	local div = New("Frame", {
+		Size = UDim2.new(1, -12, 0, 1),
+		Position = UDim2.fromOffset(6, 26),
+		BackgroundColor3 = Library.Theme.MidBorder,
+		BorderSizePixel = 0,
+		ZIndex = 51,
+		Parent = logInner,
+	})
+	Util.RegisterTheme(div, "BackgroundColor3", "MidBorder")
+
+	-- Scrollable logs container
+	local scrollFrame = New("ScrollingFrame", {
+		Size = UDim2.new(1, -12, 1, -34),
+		Position = UDim2.fromOffset(6, 30),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 3,
+		ScrollBarImageColor3 = Library.Theme.Accent1,
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		CanvasSize = UDim2.new(0, 0, 0, 0),
+		ZIndex = 51,
+		Parent = logInner,
+	})
+	Util.RegisterTheme(scrollFrame, "ScrollBarImageColor3", "AccentColor")
+
+	New("UIListLayout", {
+		Padding = UDim.new(0, 3),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = scrollFrame,
+	})
+
+	-- Draggable handling
+	do
+		local dragging, dragStart, startPos
+		header.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = true
+				dragStart = input.Position
+				startPos = logOuter.Position
+			end
 		end)
+		UserInputService.InputChanged:Connect(function(input)
+			if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+				local delta = input.Position - dragStart
+				logOuter.Position = UDim2.fromOffset(startPos.X.Offset + delta.X, startPos.Y.Offset + delta.Y)
+			end
+		end)
+		UserInputService.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 and dragging then
+				dragging = false
+				Library.Flags["__logger_pos"] = { X = logOuter.Position.X.Offset, Y = logOuter.Position.Y.Offset }
+			end
+		end)
+	end
+
+	local LoggerObj = {
+		Logs = {},
+		Frame = logOuter,
+	}
+
+	function LoggerObj:AddLog(text, tag, customColor)
+		text = tostring(text or "")
+		tag = tag or "INFO"
+		local okClk, clk = pcall(os.date, "%H:%M:%S")
+		local timeStr = okClk and clk or "00:00:00"
+
+		local tagColor = customColor
+		if not tagColor then
+			local tagUp = string.upper(tag)
+			if tagUp:find("ERR") or tagUp:find("FAIL") or tagUp:find("RISK") then
+				tagColor = Library.Theme.Risky
+			elseif tagUp:find("WARN") then
+				tagColor = Color3.fromRGB(245, 175, 65)
+			elseif tagUp:find("AIM") or tagUp:find("RAGE") then
+				tagColor = Color3.fromRGB(255, 115, 115)
+			elseif tagUp:find("VIS") or tagUp:find("ESP") then
+				tagColor = Color3.fromRGB(115, 215, 255)
+			elseif tagUp:find("CONF") or tagUp:find("SAVE") then
+				tagColor = Color3.fromRGB(168, 219, 95)
+			else
+				tagColor = Library.Theme.Accent1
+			end
+		end
+
+		local row = New("Frame", {
+			Size = UDim2.new(1, 0, 0, 16),
+			BackgroundTransparency = 1,
+			ZIndex = 52,
+			Parent = scrollFrame,
+		})
+
+		New("TextLabel", {
+			Size = UDim2.fromOffset(56, 16),
+			Position = UDim2.fromOffset(0, 0),
+			BackgroundTransparency = 1,
+			Font = Library.Theme.Font,
+			TextSize = Library.Theme.FontSize - 1,
+			TextColor3 = Library.Theme.TextDim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Text = string.format("[%s]", timeStr),
+			ZIndex = 53,
+			Parent = row,
+		})
+
+		New("TextLabel", {
+			Size = UDim2.fromOffset(60, 16),
+			Position = UDim2.fromOffset(60, 0),
+			BackgroundTransparency = 1,
+			Font = Library.Theme.FontBold,
+			TextSize = Library.Theme.FontSize - 1,
+			TextColor3 = tagColor,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Text = string.format("[%s]", string.upper(tag)),
+			ZIndex = 53,
+			Parent = row,
+		})
+
+		local msgLbl = New("TextLabel", {
+			Size = UDim2.new(1, -125, 0, 16),
+			Position = UDim2.fromOffset(125, 0),
+			BackgroundTransparency = 1,
+			Font = Library.Theme.Font,
+			TextSize = Library.Theme.FontSize,
+			TextColor3 = Library.Theme.Text,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Text = text,
+			ZIndex = 53,
+			Parent = row,
+		})
+		Util.RegisterTheme(msgLbl, "TextColor3", "FontColor")
+
+		table.insert(LoggerObj.Logs, {
+			Time = timeStr,
+			Tag = tag,
+			Message = text,
+			Instance = row,
+		})
+
+		if #LoggerObj.Logs > 150 then
+			local oldest = table.remove(LoggerObj.Logs, 1)
+			if oldest and oldest.Instance then
+				oldest.Instance:Destroy()
+			end
+		end
+
+		task.defer(function()
+			if scrollFrame and scrollFrame.Parent then
+				scrollFrame.CanvasPosition = Vector2.new(0, math.max(0, scrollFrame.AbsoluteCanvasSize.Y - scrollFrame.AbsoluteWindowSize.Y + 20))
+			end
+		end)
+	end
+
+	function LoggerObj:Clear()
+		for _, entry in ipairs(LoggerObj.Logs) do
+			if entry.Instance then
+				pcall(function() entry.Instance:Destroy() end)
+			end
+		end
+		table.clear(LoggerObj.Logs)
+	end
+
+	function LoggerObj:SetVisible(bool)
+		logOuter.Visible = bool
+	end
+
+	function LoggerObj:Toggle()
+		logOuter.Visible = not logOuter.Visible
+	end
+
+	clearBtn.MouseButton1Click:Connect(function()
+		LoggerObj:Clear()
+	end)
+
+	copyBtn.MouseButton1Click:Connect(function()
+		local outLines = {}
+		for _, e in ipairs(LoggerObj.Logs) do
+			table.insert(outLines, string.format("[%s] [%s] %s", e.Time, e.Tag, e.Message))
+		end
+		local fullText = table.concat(outLines, "\n")
+		if typeof(setclipboard) == "function" then
+			pcall(setclipboard, fullText)
+		elseif typeof(toclipboard) == "function" then
+			pcall(toclipboard, fullText)
+		end
+		Library:Notify({ Title = "Logger", Text = "Copied all logs to clipboard!", Duration = 2 })
+	end)
+
+	Library.Logger = LoggerObj
+	return LoggerObj
+end
+
+function Library:Log(text, tag, color)
+	if Library.Logger then
+		Library.Logger:AddLog(text, tag, color)
+	else
+		print(string.format("[%s] %s", tostring(tag or "INFO"), tostring(text or "")))
 	end
 end
 
@@ -3547,10 +3932,9 @@ function Library:Unload()
 			screenGui:Destroy()
 		end)
 	end
+end
+
 print(("[Axiom] build %s loaded | searchbar = 'Search...' | %d registered theme keys"):format(
 	Library.Build or "?", (function() local n = 0 for _ in pairs(Library.ThemeSignals) do n = n + 1 end return n end)()))
-
-return Library
-end
 
 return Library
