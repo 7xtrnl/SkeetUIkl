@@ -205,6 +205,10 @@ function SaveManager:Load(configName)
 			if lib.KeybindListFrame and typeof(kp) == "table" and kp.X and kp.Y then
 				pcall(function() lib.KeybindListFrame.Position = UDim2.fromOffset(kp.X, kp.Y) end)
 			end
+			local lp = fp and fp["__logger_pos"]
+			if lib.Logger and lib.Logger.Frame and typeof(lp) == "table" and lp.X and lp.Y then
+				pcall(function() lib.Logger.Frame.Position = UDim2.fromOffset(lp.X, lp.Y) end)
+			end
 		end
 	end
 
@@ -327,6 +331,20 @@ end
 local ThemeManager = SettingsManager.ThemeManager
 
 ThemeManager.BuiltInThemes = {
+	["Juanitahaxx Lavender"] = {
+		FontColor       = Color3.fromRGB(208, 207, 227),
+		MainColor       = Color3.fromRGB(19, 19, 19),
+		AccentColor     = Color3.fromRGB(176, 176, 209),
+		BackgroundColor = Color3.fromRGB(12, 12, 12),
+		OutlineColor    = Color3.fromRGB(51, 51, 51),
+	},
+	["Scoot Tactical Cyan"] = {
+		FontColor       = Color3.fromRGB(235, 235, 235),
+		MainColor       = Color3.fromRGB(20, 24, 21),
+		AccentColor     = Color3.fromRGB(202, 243, 255),
+		BackgroundColor = Color3.fromRGB(14, 17, 15),
+		OutlineColor    = Color3.fromRGB(42, 49, 45),
+	},
 	["Default Skeet"] = {
 		FontColor       = Color3.fromRGB(230, 230, 235),
 		MainColor       = Color3.fromRGB(24, 24, 27),
