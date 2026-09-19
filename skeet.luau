@@ -1227,19 +1227,50 @@ function Library:CreateWindow(cfg)
 	local sidebarEdge = New("Frame", {
 		Size = UDim2.new(0, 1, 1, 0),
 		Position = UDim2.new(1, -1, 0, 0),
-		BackgroundColor3 = Library.Theme.MidBorder,
+		BackgroundColor3 = Library.Theme.Accent1,
 		BorderSizePixel = 0,
 		ZIndex = 11,
 		Parent = sidebar,
 	})
+	Util.RegisterTheme(sidebarEdge, "BackgroundColor3", "AccentColor")
 	New("UIGradient", {
 		Rotation = 90,
 		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.3),
+			NumberSequenceKeypoint.new(0, 0.5),
+			NumberSequenceKeypoint.new(0.35, 0.15),
 			NumberSequenceKeypoint.new(0.5, 0),
-			NumberSequenceKeypoint.new(1, 0.5),
+			NumberSequenceKeypoint.new(0.65, 0.15),
+			NumberSequenceKeypoint.new(1, 0.6),
 		}),
 		Parent = sidebarEdge,
+	})
+
+	-- Sidebar accent glow — soft diffused light on right edge
+	local sidebarGlow = New("ImageLabel", {
+		Name = "SidebarAccentGlow",
+		Size = UDim2.new(0, 28, 1, 0),
+		Position = UDim2.new(1, -14, 0, 0),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Image = "rbxassetid://18245826428",
+		ImageColor3 = Library.Theme.Accent1,
+		ImageTransparency = 0.7,
+		ScaleType = Enum.ScaleType.Slice,
+		SliceCenter = Rect.new(Vector2.new(21, 21), Vector2.new(79, 79)),
+		ZIndex = 10,
+		Parent = sidebar,
+	})
+	Util.RegisterTheme(sidebarGlow, "ImageColor3", "AccentColor")
+	New("UIGradient", {
+		Rotation = 90,
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.9),
+			NumberSequenceKeypoint.new(0.3, 0.55),
+			NumberSequenceKeypoint.new(0.5, 0.4),
+			NumberSequenceKeypoint.new(0.7, 0.55),
+			NumberSequenceKeypoint.new(1, 0.9),
+		}),
+		Parent = sidebarGlow,
 	})
 
 	-- Branding section
@@ -1653,6 +1684,32 @@ function Library:CreateWindow(cfg)
 			Parent = tabBtnInner,
 		})
 		Util.RegisterTheme(activePill, "BackgroundColor3", "AccentColor")
+		-- Accent gradient on active pill (Accent1 → Accent2)
+		local pillGrad = New("UIGradient", {
+			Rotation = 90,
+			Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 255, 255)),
+				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(230, 230, 245)),
+				ColorSequenceKeypoint.new(1.0, Color3.fromRGB(180, 180, 210)),
+			}),
+			Parent = activePill,
+		})
+		-- Pill glow halo behind the pill for extra accent pop
+		local pillGlow = New("ImageLabel", {
+			Name = "PillGlow",
+			Size = UDim2.new(0, 18, 1, 10),
+			Position = UDim2.new(0.5, 0, 0.5, 0),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundTransparency = 1,
+			Image = "rbxassetid://18245826428",
+			ImageColor3 = Library.Theme.Accent1,
+			ImageTransparency = 0.65,
+			ScaleType = Enum.ScaleType.Slice,
+			SliceCenter = Rect.new(Vector2.new(21, 21), Vector2.new(79, 79)),
+			ZIndex = 13,
+			Parent = activePill,
+		})
+		Util.RegisterTheme(pillGlow, "ImageColor3", "AccentColor")
 
 		local hasIcon = (iconAsset ~= nil and typeof(iconAsset) == "string")
 		local tabIcon = nil
@@ -1733,10 +1790,10 @@ function Library:CreateWindow(cfg)
 			Parent = leftCol,
 		})
 		New("UIPadding", {
-			PaddingTop = UDim.new(0, 10),
-			PaddingBottom = UDim.new(0, 10),
-			PaddingLeft = UDim.new(0, 2),
-			PaddingRight = UDim.new(0, 4),
+			PaddingTop = UDim.new(0, 12),
+			PaddingBottom = UDim.new(0, 12),
+			PaddingLeft = UDim.new(0, 6),
+			PaddingRight = UDim.new(0, 6),
 			Parent = leftCol,
 		})
 
@@ -1761,10 +1818,10 @@ function Library:CreateWindow(cfg)
 			Parent = rightCol,
 		})
 		New("UIPadding", {
-			PaddingTop = UDim.new(0, 10),
-			PaddingBottom = UDim.new(0, 10),
-			PaddingLeft = UDim.new(0, 2),
-			PaddingRight = UDim.new(0, 4),
+			PaddingTop = UDim.new(0, 12),
+			PaddingBottom = UDim.new(0, 12),
+			PaddingLeft = UDim.new(0, 6),
+			PaddingRight = UDim.new(0, 6),
 			Parent = rightCol,
 		})
 
@@ -2040,19 +2097,19 @@ function Library:CreateWindow(cfg)
 			Util.RegisterTheme(titleText, "TextColor3", "FontColor")
 
 			local elemList = New("Frame", {
-				Size = UDim2.new(1, -16, 1, -16),
-				Position = UDim2.fromOffset(8, 12),
+				Size = UDim2.new(1, -20, 1, -20),
+				Position = UDim2.fromOffset(10, 14),
 				BackgroundTransparency = 1,
 				AutomaticSize = Enum.AutomaticSize.Y,
 				Parent = gbInner,
 			})
 			New("UIListLayout", {
-				Padding = UDim.new(0, 6),
+				Padding = UDim.new(0, 7),
 				SortOrder = Enum.SortOrder.LayoutOrder,
 				Parent = elemList,
 			})
 			New("UIPadding", {
-				PaddingBottom = UDim.new(0, 8),
+				PaddingBottom = UDim.new(0, 10),
 				Parent = elemList,
 			})
 
@@ -2521,7 +2578,7 @@ function Library:CreateWindow(cfg)
 				return bindBtnOuter
 			end
 
-			-- TOGGLE (hard-edged checkbox)
+			-- TOGGLE (modern iOS-style sliding switch with gradient fill)
 			function Group:AddToggle(tCfg)
 				tCfg = tCfg or {}
 				local tText    = tCfg.Text or "Toggle"
@@ -2529,8 +2586,12 @@ function Library:CreateWindow(cfg)
 				local flag     = tCfg.Flag or tText
 				local callback = tCfg.Callback or function() end
 
-				local BOX = 14
-				local offFill = Color3.fromRGB(28, 28, 32)
+				local TRACK_W = 28
+				local TRACK_H = 14
+				local KNOB_SIZE = 10
+				local KNOB_PAD = 2
+				local offTrackColor = Color3.fromRGB(38, 38, 42)
+				local offKnobColor = Color3.fromRGB(120, 120, 125)
 
 				local row = New("Frame", {
 					Size = UDim2.new(1, 0, 0, 18),
@@ -2555,18 +2616,71 @@ function Library:CreateWindow(cfg)
 					Parent = row,
 				})
 
-				local boxOuter, boxInner = Util.CreateHardBorder(
-					row,
-					UDim2.fromOffset(BOX, BOX),
-					UDim2.fromOffset(0, 2),
-					state and Library.Theme.Accent1 or offFill,
-					offFill
-				)
-				boxOuter.ZIndex = 2
+				-- Sliding switch track (outer border)
+				local trackOuter = New("Frame", {
+					Size = UDim2.fromOffset(TRACK_W, TRACK_H),
+					Position = UDim2.fromOffset(0, 2),
+					BackgroundColor3 = Library.Theme.OuterBorder,
+					BorderSizePixel = 0,
+					ZIndex = 2,
+					Parent = row,
+				})
+				New("UICorner", { CornerRadius = UDim.new(0, 7), Parent = trackOuter })
+
+				-- Track fill (inner)
+				local trackFill = New("Frame", {
+					Size = UDim2.new(1, -2, 1, -2),
+					Position = UDim2.fromOffset(1, 1),
+					BackgroundColor3 = state and Library.Theme.Accent1 or offTrackColor,
+					BorderSizePixel = 0,
+					ClipsDescendants = true,
+					ZIndex = 3,
+					Parent = trackOuter,
+				})
+				New("UICorner", { CornerRadius = UDim.new(0, 6), Parent = trackFill })
+
+				-- Accent gradient on track fill (Accent1 → Accent2 shimmer)
+				local toggleGrad = New("UIGradient", {
+					Rotation = 0,
+					Color = ColorSequence.new({
+						ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 255, 255)),
+						ColorSequenceKeypoint.new(0.5, Color3.fromRGB(230, 230, 245)),
+						ColorSequenceKeypoint.new(1.0, Color3.fromRGB(200, 200, 225)),
+					}),
+					Transparency = state and NumberSequence.new(0) or NumberSequence.new(1),
+					Parent = trackFill,
+				})
+
+				-- Sliding knob
+				local knob = New("Frame", {
+					Size = UDim2.fromOffset(KNOB_SIZE, KNOB_SIZE),
+					Position = state and UDim2.fromOffset(TRACK_W - KNOB_SIZE - KNOB_PAD - 1, KNOB_PAD) or UDim2.fromOffset(KNOB_PAD + 1, KNOB_PAD),
+					BackgroundColor3 = state and Color3.fromRGB(255, 255, 255) or offKnobColor,
+					BorderSizePixel = 0,
+					ZIndex = 4,
+					Parent = trackFill,
+				})
+				New("UICorner", { CornerRadius = UDim.new(0, 5), Parent = knob })
+
+				-- Knob inner glow when ON
+				local knobGlow = New("ImageLabel", {
+					Size = UDim2.new(1, 8, 1, 8),
+					Position = UDim2.new(0.5, 0, 0.5, 0),
+					AnchorPoint = Vector2.new(0.5, 0.5),
+					BackgroundTransparency = 1,
+					Image = "rbxassetid://18245826428",
+					ImageColor3 = Library.Theme.Accent1,
+					ImageTransparency = state and 0.55 or 1,
+					ScaleType = Enum.ScaleType.Slice,
+					SliceCenter = Rect.new(Vector2.new(21, 21), Vector2.new(79, 79)),
+					ZIndex = 3,
+					Parent = knob,
+				})
+				Util.RegisterTheme(knobGlow, "ImageColor3", "AccentColor")
 
 				local label = New("TextLabel", {
-					Size = UDim2.new(1, -22, 1, 0),
-					Position = UDim2.fromOffset(20, 0),
+					Size = UDim2.new(1, -(TRACK_W + 8), 1, 0),
+					Position = UDim2.fromOffset(TRACK_W + 6, 0),
 					BackgroundTransparency = 1,
 					Font = Library.Theme.Font,
 					TextSize = Library.Theme.FontSize,
@@ -2595,35 +2709,47 @@ function Library:CreateWindow(cfg)
 
 				local Toggle = { Value = state }
 
-			-- State-aware live repaint: ON toggles follow the accent, OFF stay
-			-- dark. The hard-border inner is registered to MainColor, so these
-			-- signals override that when the theme changes.
-			Util.OnTheme("AccentColor", function(col)
-				if Toggle.Value then boxInner.BackgroundColor3 = col end
-			end)
-			Util.OnTheme("MainColor", function(col)
-				boxInner.BackgroundColor3 = Toggle.Value and Library.Theme.Accent1 or offFill
-			end)
-			Util.OnTheme("FontColor", function(col)
-				label.TextColor3 = Toggle.Value and col or Library.Theme.TextDim
-			end)
-			Util.OnTheme("TextDim", function(col)
-				if not Toggle.Value then label.TextColor3 = col end
-			end)
+				-- State-aware live repaint for accent theme changes
+				Util.OnTheme("AccentColor", function(col)
+					if Toggle.Value then trackFill.BackgroundColor3 = col end
+				end)
+				Util.OnTheme("MainColor", function(col)
+					trackFill.BackgroundColor3 = Toggle.Value and Library.Theme.Accent1 or offTrackColor
+				end)
+				Util.OnTheme("FontColor", function(col)
+					label.TextColor3 = Toggle.Value and col or Library.Theme.TextDim
+				end)
+				Util.OnTheme("TextDim", function(col)
+					if not Toggle.Value then label.TextColor3 = col end
+				end)
 
 				local function setToggle(val)
 					Toggle.Value = val
 					Library.Flags[flag] = val
 
 					if val then
-						Util.Tween(boxInner, Library.Animation.Hover.Time, { BackgroundColor3 = Library.Theme.Accent1 }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
+						-- Slide knob right + fill track with accent gradient
+						Util.Tween(knob, 0.18, {
+							Position = UDim2.fromOffset(TRACK_W - KNOB_SIZE - KNOB_PAD - 1, KNOB_PAD),
+							BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+						}, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+						Util.Tween(trackFill, 0.15, { BackgroundColor3 = Library.Theme.Accent1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+						Util.Tween(knobGlow, 0.2, { ImageTransparency = 0.55 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+						toggleGrad.Transparency = NumberSequence.new(0)
 						Util.Tween(label, Library.Animation.Hover.Time, { TextColor3 = Library.Theme.Text }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
 						-- Subtle particle feedback when switching a toggle ON
 						task.delay(0.06, function()
-							if boxOuter and boxOuter.Parent then Library:CreateSuccessBurst(boxOuter) end
+							if trackOuter and trackOuter.Parent then Library:CreateSuccessBurst(trackOuter) end
 						end)
 					else
-						Util.Tween(boxInner, Library.Animation.Hover.Time, { BackgroundColor3 = offFill }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
+						-- Slide knob left + dim track
+						Util.Tween(knob, 0.18, {
+							Position = UDim2.fromOffset(KNOB_PAD + 1, KNOB_PAD),
+							BackgroundColor3 = offKnobColor,
+						}, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+						Util.Tween(trackFill, 0.15, { BackgroundColor3 = offTrackColor }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+						Util.Tween(knobGlow, 0.15, { ImageTransparency = 1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+						toggleGrad.Transparency = NumberSequence.new(1)
 						Util.Tween(label, Library.Animation.Hover.Time, { TextColor3 = Library.Theme.TextDim }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
 					end
 
@@ -2639,15 +2765,13 @@ function Library:CreateWindow(cfg)
 					Parent = row,
 				})
 				clickBtn.MouseEnter:Connect(function()
-					-- Enhanced hover effect with smooth Juanitahaxx-style animation
 					Util.Tween(hoverBg, Library.Animation.Hover.Time, { BackgroundTransparency = 0.92 }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
-					Util.Tween(boxOuter, Library.Animation.Hover.Time, { Size = UDim2.fromOffset(BOX + 1, BOX + 1) }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
+					Util.Tween(trackOuter, Library.Animation.Hover.Time, { Size = UDim2.fromOffset(TRACK_W + 1, TRACK_H + 1) }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
 					Util.PlaySound("hover")
 				end)
 				clickBtn.MouseLeave:Connect(function()
-					-- Return to normal state with smooth animation
 					Util.Tween(hoverBg, Library.Animation.Hover.Time, { BackgroundTransparency = 1 }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
-					Util.Tween(boxOuter, Library.Animation.Hover.Time, { Size = UDim2.fromOffset(BOX, BOX) }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
+					Util.Tween(trackOuter, Library.Animation.Hover.Time, { Size = UDim2.fromOffset(TRACK_W, TRACK_H) }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
 				end)
 				clickBtn.MouseButton1Click:Connect(function()
 					Util.PlaySound("click")
@@ -2834,11 +2958,14 @@ function Library:CreateWindow(cfg)
 				})
 				Util.RegisterTheme(fill, "BackgroundColor3", "AccentColor")
 
+				-- Gradient shimmer on slider fill (Accent1 → Accent2 horizontal + vertical darken)
 				New("UIGradient", {
-					Rotation = 90,
+					Rotation = 15,
 					Color = ColorSequence.new({
 						ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 255, 255)),
-						ColorSequenceKeypoint.new(1.0, Color3.fromRGB(180, 180, 180)),
+						ColorSequenceKeypoint.new(0.35, Color3.fromRGB(235, 235, 250)),
+						ColorSequenceKeypoint.new(0.65, Color3.fromRGB(210, 210, 235)),
+						ColorSequenceKeypoint.new(1.0, Color3.fromRGB(180, 180, 215)),
 					}),
 					Parent = fill,
 				})
@@ -3591,6 +3718,9 @@ function Library:SetThemeColor(colorType, newColor)
 	elseif colorType == "AccentColor" or colorType == "Accent1" then
 		applyKey("AccentColor", newColor)
 		applyKey("Accent1", newColor)
+		local h, s, v = newColor:ToHSV()
+		local lightAccent = Color3.fromHSV((h + 0.05) % 1, math.clamp(s * 0.85, 0, 1), math.min(v * 1.15, 1))
+		applyKey("Accent2", lightAccent)
 		applyKey("AccentDark", shade(newColor, 0.63))
 	elseif colorType == "BackgroundColor" or colorType == "MainTop" then
 		applyKey("BackgroundColor", newColor)
