@@ -849,23 +849,32 @@ function Library:CreateWatermark(customTitle)
 	-- Draggable watermark
 	do
 		local dragging, dragStart, startPos
+		local dragConnection, endConnection
+
 		wmInner.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 then
 				dragging = true
 				dragStart = input.Position
 				startPos = wmOuter.Position
-			end
-		end)
-		UserInputService.InputChanged:Connect(function(input)
-			if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-				local delta = input.Position - dragStart
-				wmOuter.Position = UDim2.fromOffset(startPos.X.Offset + delta.X, startPos.Y.Offset + delta.Y)
-			end
-		end)
-		UserInputService.InputEnded:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 and dragging then
-				dragging = false
-				Library.Flags["__wm_pos"] = { X = wmOuter.Position.X.Offset, Y = wmOuter.Position.Y.Offset }
+
+				if dragConnection then dragConnection:Disconnect() end
+				if endConnection then endConnection:Disconnect() end
+
+				dragConnection = UserInputService.InputChanged:Connect(function(input)
+					if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+						local delta = input.Position - dragStart
+						wmOuter.Position = UDim2.fromOffset(startPos.X.Offset + delta.X, startPos.Y.Offset + delta.Y)
+					end
+				end)
+
+				endConnection = UserInputService.InputEnded:Connect(function(input)
+					if input.UserInputType == Enum.UserInputType.MouseButton1 and dragging then
+						dragging = false
+						Library.Flags["__wm_pos"] = { X = wmOuter.Position.X.Offset, Y = wmOuter.Position.Y.Offset }
+						if dragConnection then dragConnection:Disconnect() dragConnection = nil end
+						if endConnection then endConnection:Disconnect() endConnection = nil end
+					end
+				end)
 			end
 		end)
 	end
@@ -988,23 +997,32 @@ function Library:CreateKeybindList()
 	end
 
 	local dragging, dragStart, startPos
+	local dragConnection, endConnection
+
 	header.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			dragging = true
 			dragStart = input.Position
 			startPos = kbOuter.Position
-		end
-	end)
-	UserInputService.InputChanged:Connect(function(input)
-		if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-			local delta = input.Position - dragStart
-			kbOuter.Position = UDim2.fromOffset(startPos.X.Offset + delta.X, startPos.Y.Offset + delta.Y)
-		end
-	end)
-	UserInputService.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 and dragging then
-			dragging = false
-			Library.Flags["__kb_pos"] = { X = kbOuter.Position.X.Offset, Y = kbOuter.Position.Y.Offset }
+
+			if dragConnection then dragConnection:Disconnect() end
+			if endConnection then endConnection:Disconnect() end
+
+			dragConnection = UserInputService.InputChanged:Connect(function(input)
+				if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+					local delta = input.Position - dragStart
+					kbOuter.Position = UDim2.fromOffset(startPos.X.Offset + delta.X, startPos.Y.Offset + delta.Y)
+				end
+			end)
+
+			endConnection = UserInputService.InputEnded:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton1 and dragging then
+					dragging = false
+					Library.Flags["__kb_pos"] = { X = kbOuter.Position.X.Offset, Y = kbOuter.Position.Y.Offset }
+					if dragConnection then dragConnection:Disconnect() dragConnection = nil end
+					if endConnection then endConnection:Disconnect() endConnection = nil end
+				end
+			end)
 		end
 	end)
 
@@ -1388,25 +1406,38 @@ function Library:CreateWindow(cfg)
 	-- Window dragging support from titleBar & branding
 	do
 		local dragging, dragStart, startPos
+		local dragConnection, endConnection
+
 		local function startDrag(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 then
 				dragging = true
 				dragStart = input.Position
 				startPos = winOuter.Position
+
+				-- Remove old connections if they exist
+				if dragConnection then dragConnection:Disconnect() end
+				if endConnection then endConnection:Disconnect() end
+
+				-- Create new connection for this drag operation
+				dragConnection = UserInputService.InputChanged:Connect(function(input)
+					if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+						local delta = input.Position - dragStart
+						winOuter.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+					end
+				end)
+
+				endConnection = UserInputService.InputEnded:Connect(function(input)
+					if input.UserInputType == Enum.UserInputType.MouseButton1 and dragging then
+						dragging = false
+						if dragConnection then dragConnection:Disconnect() dragConnection = nil end
+						if endConnection then endConnection:Disconnect() endConnection = nil end
+					end
+				end)
 			end
 		end
+
 		titleBar.InputBegan:Connect(startDrag)
 		brandingSection.InputBegan:Connect(startDrag)
-
-		UserInputService.InputChanged:Connect(function(input)
-			if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-				local delta = input.Position - dragStart
-				winOuter.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-			end
-		end)
-		UserInputService.InputEnded:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
-		end)
 	end
 
 	table.insert(Library.Connections, UserInputService.InputBegan:Connect(function(input, gp)
