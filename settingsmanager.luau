@@ -20,42 +20,60 @@ local SettingsManager = {
 -- HELPER FILE SYSTEM WRAPPERS
 --============================================================================--
 local function checkFolder(folder)
-	if typeof(isfolder) == "function" and typeof(makefolder) == "function" then
-		if not isfolder(folder) then
-			pcall(makefolder, folder)
+	-- Safely check if file system functions exist without causing errors
+	local hasFileAPI = false
+	
+	-- Try to access the functions safely
+	local success, isfolderFunc = pcall(function() return isfolder end)
+	local success2, makefolderFunc = pcall(function() return makefolder end)
+	
+	if success and success2 and typeof(isfolderFunc) == "function" and typeof(makefolderFunc) == "function" then
+		hasFileAPI = true
+	end
+	
+	if hasFileAPI then
+		if not pcall(isfolderFunc, folder) then
+			pcall(makefolderFunc, folder)
 		end
 	end
 end
 
 local function safeWriteFile(path, data)
-	if typeof(writefile) == "function" then
-		pcall(writefile, path, data)
+	local success, writefileFunc = pcall(function() return writefile end)
+	if success and typeof(writefileFunc) == "function" then
+		pcall(writefileFunc, path, data)
 	end
 end
 
 local function safeReadFile(path)
-	if typeof(readfile) == "function" and typeof(isfile) == "function" then
-		if isfile(path) then
-			local ok, content = pcall(readfile, path)
+	local success, readfileFunc = pcall(function() return readfile end)
+	local success2, isfileFunc = pcall(function() return isfile end)
+	
+	if success and success2 and typeof(readfileFunc) == "function" and typeof(isfileFunc) == "function" then
+		if pcall(isfileFunc, path) then
+			local ok, content = pcall(readfileFunc, path)
 			if ok then return content end
 		end
-	elseif typeof(readfile) == "function" then
-		local ok, content = pcall(readfile, path)
+	elseif success and typeof(readfileFunc) == "function" then
+		local ok, content = pcall(readfileFunc, path)
 		if ok then return content end
 	end
 	return nil
 end
 
 local function safeDeleteFile(path)
-	if typeof(delfile) == "function" then
-		pcall(delfile, path)
+	local success, delfileFunc = pcall(function() return delfile end)
+	if success and typeof(delfileFunc) == "function" then
+		pcall(delfileFunc, path)
 	end
 end
 
 local function safeListFiles(folder)
 	local files = {}
-	if typeof(listfiles) == "function" then
-		local ok, res = pcall(listfiles, folder)
+	local success, listfilesFunc = pcall(function() return listfiles end)
+	
+	if success and typeof(listfilesFunc) == "function" then
+		local ok, res = pcall(listfilesFunc, folder)
 		if ok and typeof(res) == "table" then
 			for _, file in ipairs(res) do
 				local name = file:match("([^/\\]+)%.json$")
@@ -402,9 +420,11 @@ end
 
 function ThemeManager:GetPresetList()
 	local files = {}
-	if typeof(listfiles) == "function" then
+	local success, listfilesFunc = pcall(function() return listfiles end)
+	
+	if success and typeof(listfilesFunc) == "function" then
 		checkFolder(ThemePresetFolder)
-		local ok, res = pcall(listfiles, ThemePresetFolder)
+		local ok, res = pcall(listfilesFunc, ThemePresetFolder)
 		if ok and typeof(res) == "table" then
 			for _, file in ipairs(res) do
 				local name = file:match("([^/\\]+)%.theme%.json$")
@@ -495,18 +515,25 @@ function ThemeManager:ExportClipboard(themeData)
 	local json = self:EncodeTheme(themeData)
 	if not json then return false, nil end
 	local copied = false
-	if typeof(setclipboard) == "function" then
-		copied = pcall(setclipboard, json)
-	elseif typeof(toclipboard) == "function" then
-		copied = pcall(toclipboard, json)
+	
+	local success, setclipboardFunc = pcall(function() return setclipboard end)
+	if success and typeof(setclipboardFunc) == "function" then
+		copied = pcall(setclipboardFunc, json)
+	elseif not success then
+		local success2, toclipboardFunc = pcall(function() return toclipboard end)
+		if success2 and typeof(toclipboardFunc) == "function" then
+			copied = pcall(toclipboardFunc, json)
+		end
 	end
 	return copied, json
 end
 
 function ThemeManager:ImportClipboard()
 	local text = nil
-	if typeof(getclipboard) == "function" then
-		local ok, res = pcall(getclipboard)
+	local success, getclipboardFunc = pcall(function() return getclipboard end)
+	
+	if success and typeof(getclipboardFunc) == "function" then
+		local ok, res = pcall(getclipboardFunc)
 		if ok and typeof(res) == "string" and res ~= "" then text = res end
 	end
 	if not text then return nil end
@@ -552,140 +579,6 @@ function ThemeManager:BuildThemeSection(groupbox)
 	local newPresetName  = ""
 	local selectedPreset = ""
 	local importedJson   = ""
-		
-		-- Sample toggle
-		local sampleToggle = Instance.new("Frame")
-		sampleToggle.Size = UDim2.new(1, 0, 0, 20)
-		sampleToggle.Position = UDim2.fromOffset(0, 0)
-		sampleToggle.BackgroundTransparency = 1
-		sampleToggle.Parent = previewContent
-		
-		local toggleBox = Instance.new("Frame")
-		toggleBox.Size = UDim2.fromOffset(14, 14)
-		toggleBox.Position = UDim2.fromOffset(0, 3)
-		toggleBox.BackgroundColor3 = themeData.AccentColor
-		toggleBox.BorderSizePixel = 0
-		toggleBox.Parent = sampleToggle
-		
-		local toggleCorner = Instance.new("UICorner")
-		toggleCorner.CornerRadius = UDim.new(0, 2)
-		toggleCorner.Parent = toggleBox
-		
-		local toggleLabel = Instance.new("TextLabel")
-		toggleLabel.Size = UDim2.new(1, -20, 1, 0)
-		toggleLabel.Position = UDim2.fromOffset(20, 0)
-		toggleLabel.BackgroundTransparency = 1
-		if typeof(lib.Theme.Font) == "Font" then
-			toggleLabel.FontFace = lib.Theme.Font
-		else
-			toggleLabel.Font = lib.Theme.Font
-		end
-		toggleLabel.TextSize = lib.Theme.FontSize
-		toggleLabel.TextColor3 = themeData.FontColor
-		toggleLabel.Text = "Sample Toggle"
-		toggleLabel.TextXAlignment = Enum.TextXAlignment.Left
-		toggleLabel.Parent = sampleToggle
-
-		local toggleLabelGrad = Instance.new("UIGradient")
-		toggleLabelGrad.Rotation = 90
-		toggleLabelGrad.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(163, 163, 163))
-		})
-		toggleLabelGrad.Parent = toggleLabel
-		
-		-- Sample button
-		local sampleButton = Instance.new("Frame")
-		sampleButton.Size = UDim2.new(1, 0, 0, 24)
-		sampleButton.Position = UDim2.fromOffset(0, 24)
-		sampleButton.BackgroundColor3 = themeData.MainColor
-		sampleButton.BorderSizePixel = 1
-		sampleButton.BorderColor3 = themeData.OutlineColor
-		sampleButton.Parent = previewContent
-		
-		local buttonLabel = Instance.new("TextLabel")
-		buttonLabel.Size = UDim2.new(1, 0, 1, 0)
-		buttonLabel.BackgroundTransparency = 1
-		if typeof(lib.Theme.FontBold) == "Font" then
-			buttonLabel.FontFace = lib.Theme.FontBold
-		else
-			buttonLabel.Font = lib.Theme.FontBold
-		end
-		buttonLabel.TextSize = lib.Theme.FontSize
-		buttonLabel.TextColor3 = themeData.FontColor
-		buttonLabel.Text = "Sample Button"
-		buttonLabel.ZIndex = 2
-		buttonLabel.Parent = sampleButton
-
-		local buttonLabelGrad = Instance.new("UIGradient")
-		buttonLabelGrad.Rotation = 90
-		buttonLabelGrad.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(163, 163, 163))
-		})
-		buttonLabelGrad.Parent = buttonLabel
-		
-		-- Close button
-		local closeBtn = Instance.new("TextButton")
-		closeBtn.Size = UDim2.fromOffset(24, 24)
-		closeBtn.Position = UDim2.new(1, -28, 0, 4)
-		closeBtn.BackgroundTransparency = 1
-		closeBtn.Text = "✕"
-		if typeof(lib.Theme.FontBold) == "Font" then
-			closeBtn.FontFace = lib.Theme.FontBold
-		else
-			closeBtn.Font = lib.Theme.FontBold
-		end
-		closeBtn.TextSize = lib.Theme.FontSize + 2
-		closeBtn.TextColor3 = Color3.fromRGB(165, 165, 180)
-		closeBtn.ZIndex = 15
-		closeBtn.Parent = previewInner
-		
-		closeBtn.MouseButton1Click:Connect(function()
-			if previewWindow and previewWindow.Root then
-				previewWindow.Root:Destroy()
-				previewWindow = nil
-			end
-		end)
-		
-		-- Apply button
-		local applyBtn = Instance.new("TextButton")
-		applyBtn.Size = UDim2.new(1, -16, 0, 24)
-		applyBtn.Position = UDim2.fromOffset(8, -32)
-		applyBtn.BackgroundColor3 = themeData.AccentColor
-		applyBtn.BorderSizePixel = 1
-		applyBtn.BorderColor3 = themeData.OutlineColor
-		applyBtn.Text = "Apply Theme"
-		if typeof(lib.Theme.FontBold) == "Font" then
-			applyBtn.FontFace = lib.Theme.FontBold
-		else
-			applyBtn.Font = lib.Theme.FontBold
-		end
-		applyBtn.TextSize = lib.Theme.FontSize
-		applyBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
-		applyBtn.ZIndex = 10
-		applyBtn.Parent = previewInner
-		
-		local applyCorner = Instance.new("UICorner")
-		applyCorner.CornerRadius = UDim.new(0, 4)
-		applyCorner.Parent = applyBtn
-		
-		applyBtn.MouseButton1Click:Connect(function()
-			self:ApplyTheme(themeData)
-			for prop, col in pairs(themeData) do
-				currentCustomTheme[prop] = col
-				if pickers[prop] and pickers[prop].Set then
-					pickers[prop]:Set(col)
-				end
-			end
-			if previewWindow and previewWindow.Root then
-				previewWindow.Root:Destroy()
-				previewWindow = nil
-			end
-		end)
-		
-		previewWindow = { Root = previewOuter }
-	end
 
 	groupbox:AddDropdown({
 		Text = "Theme Preset",
@@ -992,10 +885,14 @@ function ThemeManager:BuildThemeSection(groupbox)
 				return
 			end
 			local copied = false
-			if typeof(setclipboard) == "function" then
-				copied = pcall(setclipboard, jobId)
-			elseif typeof(toclipboard) == "function" then
-				copied = pcall(toclipboard, jobId)
+			local success, setclipboardFunc = pcall(function() return setclipboard end)
+			if success and typeof(setclipboardFunc) == "function" then
+				copied = pcall(setclipboardFunc, jobId)
+			elseif not success then
+				local success2, toclipboardFunc = pcall(function() return toclipboard end)
+				if success2 and typeof(toclipboardFunc) == "function" then
+					copied = pcall(toclipboardFunc, jobId)
+				end
 			end
 			if lib then
 				lib:Notify({
@@ -1020,10 +917,14 @@ function ThemeManager:BuildThemeSection(groupbox)
 			end
 			local joinLink = string.format("roblox://experiences/start?placeId=%d&gameInstanceId=%s", game.PlaceId, jobId)
 			local copied = false
-			if typeof(setclipboard) == "function" then
-				copied = pcall(setclipboard, joinLink)
-			elseif typeof(toclipboard) == "function" then
-				copied = pcall(toclipboard, joinLink)
+			local success, setclipboardFunc = pcall(function() return setclipboard end)
+			if success and typeof(setclipboardFunc) == "function" then
+				copied = pcall(setclipboardFunc, joinLink)
+			elseif not success then
+				local success2, toclipboardFunc = pcall(function() return toclipboard end)
+				if success2 and typeof(toclipboardFunc) == "function" then
+					copied = pcall(toclipboardFunc, joinLink)
+				end
 			end
 			if lib then
 				lib:Notify({
