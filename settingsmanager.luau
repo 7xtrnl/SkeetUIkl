@@ -549,93 +549,9 @@ function ThemeManager:BuildThemeSection(groupbox)
 	}
 
 	local pickers = {}
-	local previewWindow = nil
 	local newPresetName  = ""
 	local selectedPreset = ""
 	local importedJson   = ""
-
-	-- Theme Preview Function
-	local function showThemePreview(themeData)
-		if not SettingsManager.Library then return end
-		
-		-- Close existing preview
-		if previewWindow then
-			if previewWindow.Root then previewWindow.Root:Destroy() end
-			previewWindow = nil
-		end
-		
-		local lib = SettingsManager.Library
-		local screenGui = lib.ScreenGui
-		
-		-- Simple preview window (without complex border system for compatibility)
-		local previewOuter = Instance.new("Frame")
-		previewOuter.Size = UDim2.fromOffset(320, 280)
-		previewOuter.Position = UDim2.new(0.5, 0, 0.5, -140)
-		previewOuter.AnchorPoint = Vector2.new(0.5, 0.5)
-		previewOuter.BackgroundColor3 = themeData.OutlineColor
-		previewOuter.BorderSizePixel = 0
-		previewOuter.ZIndex = 9995
-		previewOuter.Parent = screenGui
-		
-		local previewInner = Instance.new("Frame")
-		previewInner.Size = UDim2.new(1, -2, 1, -2)
-		previewInner.Position = UDim2.fromOffset(1, 1)
-		previewInner.BackgroundColor3 = themeData.BackgroundColor
-		previewInner.BorderSizePixel = 0
-		previewInner.Parent = previewOuter
-		
-		-- Simple gradient bar
-		local gradientBar = Instance.new("Frame")
-		gradientBar.Size = UDim2.new(1, 0, 0, 2)
-		gradientBar.Position = UDim2.fromOffset(0, 0)
-		gradientBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		gradientBar.BorderSizePixel = 0
-		gradientBar.ZIndex = 10
-		gradientBar.Parent = previewInner
-		
-		local gradient = Instance.new("UIGradient")
-		gradient.Rotation = 0
-		gradient.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0.00, Color3.fromRGB(54, 163, 247)),
-			ColorSequenceKeypoint.new(0.20, Color3.fromRGB(98, 216, 247)),
-			ColorSequenceKeypoint.new(0.40, Color3.fromRGB(168, 219, 95)),
-			ColorSequenceKeypoint.new(0.60, Color3.fromRGB(247, 184, 92)),
-			ColorSequenceKeypoint.new(0.80, Color3.fromRGB(247, 104, 181)),
-			ColorSequenceKeypoint.new(1.00, Color3.fromRGB(184, 119, 247)),
-		})
-		gradient.Parent = gradientBar
-		
-		-- Preview title
-		local title = Instance.new("TextLabel")
-		title.Size = UDim2.new(1, 0, 0, 24)
-		title.Position = UDim2.fromOffset(0, 4)
-		title.BackgroundTransparency = 1
-		if typeof(lib.Theme.FontBold) == "Font" then
-			title.FontFace = lib.Theme.FontBold
-		else
-			title.Font = lib.Theme.FontBold
-		end
-		title.TextSize = lib.Theme.FontSize + 1
-		title.TextColor3 = themeData.FontColor
-		title.Text = "THEME PREVIEW"
-		title.TextXAlignment = Enum.TextXAlignment.Center
-		title.ZIndex = 10
-		title.Parent = previewInner
-
-		local titleGrad = Instance.new("UIGradient")
-		titleGrad.Rotation = 90
-		titleGrad.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(163, 163, 163))
-		})
-		titleGrad.Parent = title
-		
-		-- Preview content area
-		local previewContent = Instance.new("Frame")
-		previewContent.Size = UDim2.new(1, -16, 1, -36)
-		previewContent.Position = UDim2.fromOffset(8, 28)
-		previewContent.BackgroundTransparency = 1
-		previewContent.Parent = previewInner
 		
 		-- Sample toggle
 		local sampleToggle = Instance.new("Frame")
@@ -790,13 +706,7 @@ function ThemeManager:BuildThemeSection(groupbox)
 		end,
 	})
 	
-	-- Add a button to preview current theme
-	groupbox:AddButton({
-		Text = "Preview Current Theme",
-		Callback = function()
-			showThemePreview(currentCustomTheme)
-		end,
-	})
+
 
 	-- Dark / Light Mode quick switch between preset dark & light themes
 	groupbox:AddToggle({
@@ -813,7 +723,6 @@ function ThemeManager:BuildThemeSection(groupbox)
 						pickers[prop]:Set(col)
 					end
 				end
-				showThemePreview(preset)
 			end
 		end,
 	})
@@ -831,7 +740,6 @@ function ThemeManager:BuildThemeSection(groupbox)
 						pickers[prop]:Set(col)
 					end
 				end
-				showThemePreview(td)
 			end
 		end,
 	})
@@ -927,7 +835,6 @@ function ThemeManager:BuildThemeSection(groupbox)
 						pickers[prop]:Set(col)
 					end
 				end
-				showThemePreview(td)
 				if SettingsManager.Library then
 					SettingsManager.Library:Notify({ Title = "Theme Manager", Text = "Theme imported from clipboard!", Duration = 3, Type = "Success" })
 				end
@@ -962,7 +869,6 @@ function ThemeManager:BuildThemeSection(groupbox)
 						pickers[prop]:Set(col)
 					end
 				end
-				showThemePreview(td)
 				if SettingsManager.Library then
 					SettingsManager.Library:Notify({ Title = "Theme Manager", Text = "Theme applied from JSON!", Duration = 3, Type = "Success" })
 				end
