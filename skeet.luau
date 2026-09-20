@@ -155,7 +155,6 @@ local Library = {
 	ThemeSignals = {},
 	KeybindList = nil,
 	Watermark   = nil,
-	Logger      = nil,
 	ScreenGui   = screenGui,
 	SoundsEnabled = true,
 	SearchQuery = "",
@@ -1040,10 +1039,7 @@ function Library:Notify(cfg)
 	local nType    = cfg.Type or "Info"
 	local iconId   = cfg.Icon or (nType == "Success" and Library.Icons.Check or (nType == "Warning" and Library.Icons.Alert or Library.Icons.Info))
 
-	-- Auto-log to Logger HUD
-	pcall(function()
-		Library:Log(text, title)
-	end)
+
 
 	local notifOuter, notifInner = Util.CreateHardBorder(notifHolder, UDim2.fromOffset(270, 56), nil, Library.Theme.MainTop, Library.Theme.MainBottom, true)
 	notifOuter.ClipsDescendants = true
@@ -1193,89 +1189,15 @@ function Library:CreateWindow(cfg)
 	})
 	Util.RegisterTheme(sidebar, "BackgroundColor3", "MainColor")
 
-	-- Black sidebar with a light vertical fade (no orbs / rounded blobs)
-	New("UIGradient", {
-		Rotation = 90,
-		Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0.0, Color3.fromRGB(32, 32, 36)),
-			ColorSequenceKeypoint.new(0.35, Color3.fromRGB(24, 24, 28)),
-			ColorSequenceKeypoint.new(1.0, Color3.fromRGB(16, 16, 18)),
-		}),
-		Parent = sidebar,
-	})
 
-	local sidebarFade = New("Frame", {
-		Size = UDim2.new(1, 0, 0, 72),
-		Position = UDim2.fromOffset(0, 0),
-		BackgroundColor3 = Library.Theme.Accent1,
-		BackgroundTransparency = 0.94,
-		BorderSizePixel = 0,
-		ZIndex = 10,
-		Parent = sidebar,
-	})
-	Util.RegisterTheme(sidebarFade, "BackgroundColor3", "AccentColor")
-	New("UIGradient", {
-		Rotation = 90,
-		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0),
-			NumberSequenceKeypoint.new(1, 1),
-		}),
-		Parent = sidebarFade,
-	})
 
-	-- Sidebar right edge separator with gradient fade
-	local sidebarEdge = New("Frame", {
-		Size = UDim2.new(0, 1, 1, 0),
-		Position = UDim2.new(1, -1, 0, 0),
-		BackgroundColor3 = Library.Theme.Accent1,
-		BorderSizePixel = 0,
-		ZIndex = 11,
-		Parent = sidebar,
-	})
-	Util.RegisterTheme(sidebarEdge, "BackgroundColor3", "AccentColor")
-	New("UIGradient", {
-		Rotation = 90,
-		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.5),
-			NumberSequenceKeypoint.new(0.35, 0.15),
-			NumberSequenceKeypoint.new(0.5, 0),
-			NumberSequenceKeypoint.new(0.65, 0.15),
-			NumberSequenceKeypoint.new(1, 0.6),
-		}),
-		Parent = sidebarEdge,
-	})
 
-	-- Sidebar accent glow — soft diffused light on right edge
-	local sidebarGlow = New("ImageLabel", {
-		Name = "SidebarAccentGlow",
-		Size = UDim2.new(0, 28, 1, 0),
-		Position = UDim2.new(1, -14, 0, 0),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		Image = "rbxassetid://18245826428",
-		ImageColor3 = Library.Theme.Accent1,
-		ImageTransparency = 0.7,
-		ScaleType = Enum.ScaleType.Slice,
-		SliceCenter = Rect.new(Vector2.new(21, 21), Vector2.new(79, 79)),
-		ZIndex = 10,
-		Parent = sidebar,
-	})
-	Util.RegisterTheme(sidebarGlow, "ImageColor3", "AccentColor")
-	New("UIGradient", {
-		Rotation = 90,
-		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.9),
-			NumberSequenceKeypoint.new(0.3, 0.55),
-			NumberSequenceKeypoint.new(0.5, 0.4),
-			NumberSequenceKeypoint.new(0.7, 0.55),
-			NumberSequenceKeypoint.new(1, 0.9),
-		}),
-		Parent = sidebarGlow,
-	})
 
-	-- Branding section
+
+
+	-- Branding section - simplified
 	local brandingSection = New("Frame", {
-		Size = UDim2.new(1, 0, 0, 60),
+		Size = UDim2.new(1, 0, 0, 50),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundTransparency = 1,
 		ZIndex = 11,
@@ -1283,8 +1205,8 @@ function Library:CreateWindow(cfg)
 	})
 
 	local brandIcon = New("ImageLabel", {
-		Size = UDim2.fromOffset(38, 38),
-		Position = UDim2.fromOffset(10, 11),
+		Size = UDim2.fromOffset(32, 32),
+		Position = UDim2.fromOffset(8, 9),
 		BackgroundTransparency = 1,
 		Image = Library.Icons.Shield,
 		ImageColor3 = Library.Theme.Accent1,
@@ -1294,11 +1216,11 @@ function Library:CreateWindow(cfg)
 	Util.RegisterTheme(brandIcon, "ImageColor3", "AccentColor")
 
 	New("TextLabel", {
-		Size = UDim2.new(1, -58, 0, 20),
-		Position = UDim2.fromOffset(54, 15),
+		Size = UDim2.new(1, -50, 0, 20),
+		Position = UDim2.fromOffset(48, 12),
 		BackgroundTransparency = 1,
 		Font = Library.Theme.FontBold,
-		TextSize = Library.Theme.FontSize + 2,
+		TextSize = Library.Theme.FontSize + 1,
 		TextColor3 = Library.Theme.Text,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Text = "SKEET",
@@ -1307,8 +1229,8 @@ function Library:CreateWindow(cfg)
 	})
 
 	New("TextLabel", {
-		Size = UDim2.new(1, -58, 0, 16),
-		Position = UDim2.fromOffset(54, 34),
+		Size = UDim2.new(1, -50, 0, 14),
+		Position = UDim2.fromOffset(48, 30),
 		BackgroundTransparency = 1,
 		Font = Library.Theme.Font,
 		TextSize = Library.Theme.FontSize - 1,
@@ -1321,8 +1243,8 @@ function Library:CreateWindow(cfg)
 
 	-- Tab list in sidebar
 	local sidebarTabList = New("Frame", {
-		Size = UDim2.new(1, 0, 1, -70),
-		Position = UDim2.fromOffset(0, 65),
+		Size = UDim2.new(1, 0, 1, -60),
+		Position = UDim2.fromOffset(0, 55),
 		BackgroundTransparency = 1,
 		ZIndex = 11,
 		Parent = sidebar,
@@ -1672,7 +1594,25 @@ function Library:CreateWindow(cfg)
 	local Window = { Tabs = {} }
 
 	function Window:AddTab(tabName, iconAsset)
-		local tabBtnOuter, tabBtnInner = Util.CreateHardBorder(sidebarTabList, UDim2.new(1, -8, 0, 32), nil, Library.Theme.ControlTop, Library.Theme.ControlBottom)
+		-- Create tab button without shading gradient for cleaner look
+		local tabBtnOuter = New("Frame", {
+			Size = UDim2.new(1, -8, 0, 32),
+			BackgroundColor3 = Library.Theme.OuterBorder,
+			BorderSizePixel = 0,
+			ZIndex = 12,
+			Parent = sidebarTabList,
+		})
+		Util.RegisterTheme(tabBtnOuter, "BackgroundColor3", "OutlineColor")
+
+		local tabBtnInner = New("Frame", {
+			Size = UDim2.new(1, -2, 1, -2),
+			Position = UDim2.fromOffset(1, 1),
+			BackgroundColor3 = Library.Theme.ControlTop,
+			BorderSizePixel = 0,
+			ZIndex = 13,
+			Parent = tabBtnOuter,
+		})
+		Util.RegisterTheme(tabBtnInner, "BackgroundColor3", "MainColor")
 
 		local activePill = New("Frame", {
 			Size = UDim2.new(0, 3, 0, 0),
@@ -2006,7 +1946,6 @@ function Library:CreateWindow(cfg)
 				Util.Tween(other.Pill, Library.Animation.Tab.Time, { Size = UDim2.new(0, 2, 0, 0) }, Library.Animation.Tab.Style, Library.Animation.Tab.Dir)
 				Util.Tween(other.Label, 0.25, { TextColor3 = Library.Theme.TextDim }, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
 				if other.Icon then Util.Tween(other.Icon, 0.25, { ImageColor3 = Library.Theme.TextDim }, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out) end
-				Util.Tween(other.Inner, 0.25, { BackgroundColor3 = Library.Theme.ControlTop }, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
 			end
 
 			-- Slide in new tab from below with Exponential
@@ -2020,7 +1959,6 @@ function Library:CreateWindow(cfg)
 			Util.Tween(activePill, Library.Animation.Tab.Time, { Size = UDim2.new(0, 3, 0.7, 0) }, Library.Animation.Tab.Style, Library.Animation.Tab.Dir)
 			Util.Tween(tabLabel, 0.4, { TextColor3 = Library.Theme.Text }, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
 			if tabIcon then Util.Tween(tabIcon, 0.4, { ImageColor3 = Library.Theme.Accent1 }, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out) end
-			Util.Tween(tabBtnInner, 0.4, { BackgroundColor3 = Library.Theme.GroupTop }, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
 		end
 
 		tabBtnInner.InputBegan:Connect(function(input)
@@ -2033,13 +1971,12 @@ function Library:CreateWindow(cfg)
 		tabBtnInner.MouseEnter:Connect(function()
 			Util.PlaySound("hover")
 			if not tabPage.Visible then
-				Util.Tween(tabBtnInner, Library.Animation.Hover.Time, { BackgroundColor3 = Library.Theme.ControlHover }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
+				-- Only change text color on hover, keep background clean
 				Util.Tween(tabLabel, Library.Animation.Hover.Time, { TextColor3 = Library.Theme.TextDim:lerp(Library.Theme.Text, 0.5) }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
 			end
 		end)
 		tabBtnInner.MouseLeave:Connect(function()
 			if not tabPage.Visible then
-				Util.Tween(tabBtnInner, Library.Animation.Hover.Time, { BackgroundColor3 = Library.Theme.ControlTop }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
 				Util.Tween(tabLabel, Library.Animation.Hover.Time, { TextColor3 = Library.Theme.TextDim }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
 			end
 		end)
@@ -2578,7 +2515,7 @@ function Library:CreateWindow(cfg)
 				return bindBtnOuter
 			end
 
-			-- TOGGLE (modern iOS-style sliding switch with gradient fill)
+			-- TOGGLE (cleaner modern sliding switch with prominent glow)
 			function Group:AddToggle(tCfg)
 				tCfg = tCfg or {}
 				local tText    = tCfg.Text or "Toggle"
@@ -2586,12 +2523,12 @@ function Library:CreateWindow(cfg)
 				local flag     = tCfg.Flag or tText
 				local callback = tCfg.Callback or function() end
 
-				local TRACK_W = 28
-				local TRACK_H = 14
-				local KNOB_SIZE = 10
+				local TRACK_W = 32
+				local TRACK_H = 16
+				local KNOB_SIZE = 12
 				local KNOB_PAD = 2
-				local offTrackColor = Color3.fromRGB(38, 38, 42)
-				local offKnobColor = Color3.fromRGB(120, 120, 125)
+				local offTrackColor = Color3.fromRGB(45, 45, 50)
+				local offKnobColor = Color3.fromRGB(140, 140, 145)
 
 				local row = New("Frame", {
 					Size = UDim2.new(1, 0, 0, 18),
@@ -2606,71 +2543,65 @@ function Library:CreateWindow(cfg)
 					Groupbox = gbOuter,
 				})
 
-				local hoverBg = New("Frame", {
-					Size = UDim2.new(1, 4, 1, 2),
-					Position = UDim2.fromOffset(-2, -1),
-					BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-					BackgroundTransparency = 1,
-					BorderSizePixel = 0,
-					ZIndex = 0,
-					Parent = row,
-				})
-
-				-- Sliding switch track (outer border)
-				local trackOuter = New("Frame", {
+				-- Clean track background
+				local trackBg = New("Frame", {
 					Size = UDim2.fromOffset(TRACK_W, TRACK_H),
-					Position = UDim2.fromOffset(0, 2),
-					BackgroundColor3 = Library.Theme.OuterBorder,
+					Position = UDim2.fromOffset(0, 1),
+					BackgroundColor3 = offTrackColor,
 					BorderSizePixel = 0,
 					ZIndex = 2,
 					Parent = row,
 				})
-				New("UICorner", { CornerRadius = UDim.new(0, 7), Parent = trackOuter })
+				New("UICorner", { CornerRadius = UDim.new(0, 8), Parent = trackBg })
 
-				-- Track fill (inner)
+				-- Track fill with accent color when ON
 				local trackFill = New("Frame", {
-					Size = UDim2.new(1, -2, 1, -2),
-					Position = UDim2.fromOffset(1, 1),
-					BackgroundColor3 = state and Library.Theme.Accent1 or offTrackColor,
+					Size = UDim2.new(1, 0, 1, 0),
+					BackgroundColor3 = Library.Theme.Accent1,
+					BackgroundTransparency = state and 0 or 1,
 					BorderSizePixel = 0,
-					ClipsDescendants = true,
 					ZIndex = 3,
-					Parent = trackOuter,
+					Parent = trackBg,
 				})
-				New("UICorner", { CornerRadius = UDim.new(0, 6), Parent = trackFill })
+				New("UICorner", { CornerRadius = UDim.new(0, 8), Parent = trackFill })
+				Util.RegisterTheme(trackFill, "BackgroundColor3", "AccentColor")
 
-				-- Accent gradient on track fill (Accent1 → Accent2 shimmer)
-				local toggleGrad = New("UIGradient", {
-					Rotation = 0,
-					Color = ColorSequence.new({
-						ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 255, 255)),
-						ColorSequenceKeypoint.new(0.5, Color3.fromRGB(230, 230, 245)),
-						ColorSequenceKeypoint.new(1.0, Color3.fromRGB(200, 200, 225)),
-					}),
-					Transparency = state and NumberSequence.new(0) or NumberSequence.new(1),
-					Parent = trackFill,
-				})
-
-				-- Sliding knob
-				local knob = New("Frame", {
-					Size = UDim2.fromOffset(KNOB_SIZE, KNOB_SIZE),
-					Position = state and UDim2.fromOffset(TRACK_W - KNOB_SIZE - KNOB_PAD - 1, KNOB_PAD) or UDim2.fromOffset(KNOB_PAD + 1, KNOB_PAD),
-					BackgroundColor3 = state and Color3.fromRGB(255, 255, 255) or offKnobColor,
-					BorderSizePixel = 0,
-					ZIndex = 4,
-					Parent = trackFill,
-				})
-				New("UICorner", { CornerRadius = UDim.new(0, 5), Parent = knob })
-
-				-- Knob inner glow when ON
-				local knobGlow = New("ImageLabel", {
-					Size = UDim2.new(1, 8, 1, 8),
+				-- Prominent outer glow when ON
+				local trackGlow = New("ImageLabel", {
+					Size = UDim2.new(1, 12, 1, 12),
 					Position = UDim2.new(0.5, 0, 0.5, 0),
 					AnchorPoint = Vector2.new(0.5, 0.5),
 					BackgroundTransparency = 1,
 					Image = "rbxassetid://18245826428",
 					ImageColor3 = Library.Theme.Accent1,
-					ImageTransparency = state and 0.55 or 1,
+					ImageTransparency = state and 0.7 or 1,
+					ScaleType = Enum.ScaleType.Slice,
+					SliceCenter = Rect.new(Vector2.new(21, 21), Vector2.new(79, 79)),
+					ZIndex = 1,
+					Parent = trackBg,
+				})
+				Util.RegisterTheme(trackGlow, "ImageColor3", "AccentColor")
+
+				-- Sliding knob
+				local knob = New("Frame", {
+					Size = UDim2.fromOffset(KNOB_SIZE, KNOB_SIZE),
+					Position = state and UDim2.fromOffset(TRACK_W - KNOB_SIZE - KNOB_PAD, KNOB_PAD) or UDim2.fromOffset(KNOB_PAD, KNOB_PAD),
+					BackgroundColor3 = state and Color3.fromRGB(255, 255, 255) or offKnobColor,
+					BorderSizePixel = 0,
+					ZIndex = 4,
+					Parent = trackBg,
+				})
+				New("UICorner", { CornerRadius = UDim.new(0, 6), Parent = knob })
+
+				-- Knob inner glow when ON
+				local knobGlow = New("ImageLabel", {
+					Size = UDim2.new(1, 10, 1, 10),
+					Position = UDim2.new(0.5, 0, 0.5, 0),
+					AnchorPoint = Vector2.new(0.5, 0.5),
+					BackgroundTransparency = 1,
+					Image = "rbxassetid://18245826428",
+					ImageColor3 = Library.Theme.Accent1,
+					ImageTransparency = state and 0.4 or 1,
 					ScaleType = Enum.ScaleType.Slice,
 					SliceCenter = Rect.new(Vector2.new(21, 21), Vector2.new(79, 79)),
 					ZIndex = 3,
@@ -2711,10 +2642,11 @@ function Library:CreateWindow(cfg)
 
 				-- State-aware live repaint for accent theme changes
 				Util.OnTheme("AccentColor", function(col)
-					if Toggle.Value then trackFill.BackgroundColor3 = col end
-				end)
-				Util.OnTheme("MainColor", function(col)
-					trackFill.BackgroundColor3 = Toggle.Value and Library.Theme.Accent1 or offTrackColor
+					if Toggle.Value then 
+						trackFill.BackgroundColor3 = col
+						trackGlow.ImageColor3 = col
+						knobGlow.ImageColor3 = col
+					end
 				end)
 				Util.OnTheme("FontColor", function(col)
 					label.TextColor3 = Toggle.Value and col or Library.Theme.TextDim
@@ -2728,28 +2660,28 @@ function Library:CreateWindow(cfg)
 					Library.Flags[flag] = val
 
 					if val then
-						-- Slide knob right + fill track with accent gradient
+						-- Slide knob right + show fill and glow
 						Util.Tween(knob, 0.18, {
-							Position = UDim2.fromOffset(TRACK_W - KNOB_SIZE - KNOB_PAD - 1, KNOB_PAD),
+							Position = UDim2.fromOffset(TRACK_W - KNOB_SIZE - KNOB_PAD, KNOB_PAD),
 							BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 						}, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-						Util.Tween(trackFill, 0.15, { BackgroundColor3 = Library.Theme.Accent1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-						Util.Tween(knobGlow, 0.2, { ImageTransparency = 0.55 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-						toggleGrad.Transparency = NumberSequence.new(0)
+						Util.Tween(trackFill, 0.15, { BackgroundTransparency = 0 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+						Util.Tween(trackGlow, 0.2, { ImageTransparency = 0.7 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+						Util.Tween(knobGlow, 0.2, { ImageTransparency = 0.4 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 						Util.Tween(label, Library.Animation.Hover.Time, { TextColor3 = Library.Theme.Text }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
 						-- Subtle particle feedback when switching a toggle ON
 						task.delay(0.06, function()
-							if trackOuter and trackOuter.Parent then Library:CreateSuccessBurst(trackOuter) end
+							if trackBg and trackBg.Parent then Library:CreateSuccessBurst(trackBg) end
 						end)
 					else
-						-- Slide knob left + dim track
+						-- Slide knob left + hide fill and glow
 						Util.Tween(knob, 0.18, {
-							Position = UDim2.fromOffset(KNOB_PAD + 1, KNOB_PAD),
+							Position = UDim2.fromOffset(KNOB_PAD, KNOB_PAD),
 							BackgroundColor3 = offKnobColor,
 						}, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-						Util.Tween(trackFill, 0.15, { BackgroundColor3 = offTrackColor }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+						Util.Tween(trackFill, 0.15, { BackgroundTransparency = 1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+						Util.Tween(trackGlow, 0.15, { ImageTransparency = 1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 						Util.Tween(knobGlow, 0.15, { ImageTransparency = 1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-						toggleGrad.Transparency = NumberSequence.new(1)
 						Util.Tween(label, Library.Animation.Hover.Time, { TextColor3 = Library.Theme.TextDim }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
 					end
 
@@ -2765,13 +2697,11 @@ function Library:CreateWindow(cfg)
 					Parent = row,
 				})
 				clickBtn.MouseEnter:Connect(function()
-					Util.Tween(hoverBg, Library.Animation.Hover.Time, { BackgroundTransparency = 0.92 }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
-					Util.Tween(trackOuter, Library.Animation.Hover.Time, { Size = UDim2.fromOffset(TRACK_W + 1, TRACK_H + 1) }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
+					Util.Tween(trackBg, Library.Animation.Hover.Time, { Size = UDim2.fromOffset(TRACK_W + 2, TRACK_H + 2) }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
 					Util.PlaySound("hover")
 				end)
 				clickBtn.MouseLeave:Connect(function()
-					Util.Tween(hoverBg, Library.Animation.Hover.Time, { BackgroundTransparency = 1 }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
-					Util.Tween(trackOuter, Library.Animation.Hover.Time, { Size = UDim2.fromOffset(TRACK_W, TRACK_H) }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
+					Util.Tween(trackBg, Library.Animation.Hover.Time, { Size = UDim2.fromOffset(TRACK_W, TRACK_H) }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
 				end)
 				clickBtn.MouseButton1Click:Connect(function()
 					Util.PlaySound("click")
@@ -3757,280 +3687,6 @@ end
 function Library:SetTheme(themeTable)
 	for name, col in pairs(themeTable or {}) do
 		Library:SetThemeColor(name, col)
-	end
-end
-
---============================================================================--
--- EVENT LOGGER HUD ("Logs")
---============================================================================--
-function Library:CreateLogger(cfg)
-	cfg = cfg or {}
-	local title = cfg.Title or "EVENT LOGGER"
-	local logSize = cfg.Size or UDim2.fromOffset(460, 210)
-	local logPos = cfg.Position or UDim2.fromOffset(20, 90)
-
-	local logOuter, logInner = Util.CreateHardBorder(screenGui, logSize, logPos, Library.Theme.MainTop, Library.Theme.MainBottom, true)
-	logOuter.ZIndex = 50
-	Util.AddSkeetGradientBar(logInner, 2)
-
-	-- Restore saved logger position from config flags
-	local savedLogPos = Library.Flags["__logger_pos"]
-	if typeof(savedLogPos) == "table" and savedLogPos.X and savedLogPos.Y then
-		logOuter.Position = UDim2.fromOffset(savedLogPos.X, savedLogPos.Y)
-	end
-
-	-- Header Frame
-	local header = New("Frame", {
-		Size = UDim2.new(1, 0, 0, 24),
-		Position = UDim2.fromOffset(0, 2),
-		BackgroundTransparency = 1,
-		ZIndex = 51,
-		Parent = logInner,
-	})
-
-	local headerIcon = New("ImageLabel", {
-		Size = UDim2.fromOffset(13, 13),
-		Position = UDim2.fromOffset(8, 6),
-		BackgroundTransparency = 1,
-		Image = Library.Icons.Sliders,
-		ImageColor3 = Library.Theme.Accent1,
-		ZIndex = 52,
-		Parent = header,
-	})
-	Util.RegisterTheme(headerIcon, "ImageColor3", "AccentColor")
-
-	local headerTitle = New("TextLabel", {
-		Size = UDim2.new(1, -110, 1, 0),
-		Position = UDim2.fromOffset(26, 0),
-		BackgroundTransparency = 1,
-		Font = Library.Theme.FontBold,
-		TextSize = Library.Theme.FontSize,
-		TextColor3 = Library.Theme.Text,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = title,
-		ZIndex = 52,
-		Parent = header,
-	})
-	Util.RegisterTheme(headerTitle, "TextColor3", "FontColor")
-
-	-- Header Action Buttons: Clear & Copy
-	local clearBtn = New("ImageButton", {
-		Size = UDim2.fromOffset(14, 14),
-		Position = UDim2.new(1, -48, 0, 5),
-		BackgroundTransparency = 1,
-		Image = Library.Icons.Trash,
-		ImageColor3 = Library.Theme.TextDim,
-		ZIndex = 52,
-		Parent = header,
-	})
-
-	local copyBtn = New("ImageButton", {
-		Size = UDim2.fromOffset(14, 14),
-		Position = UDim2.new(1, -26, 0, 5),
-		BackgroundTransparency = 1,
-		Image = Library.Icons.Copy,
-		ImageColor3 = Library.Theme.TextDim,
-		ZIndex = 52,
-		Parent = header,
-	})
-
-	-- Divider under header
-	local div = New("Frame", {
-		Size = UDim2.new(1, -12, 0, 1),
-		Position = UDim2.fromOffset(6, 26),
-		BackgroundColor3 = Library.Theme.MidBorder,
-		BorderSizePixel = 0,
-		ZIndex = 51,
-		Parent = logInner,
-	})
-	Util.RegisterTheme(div, "BackgroundColor3", "MidBorder")
-
-	-- Scrollable logs container
-	local scrollFrame = New("ScrollingFrame", {
-		Size = UDim2.new(1, -12, 1, -34),
-		Position = UDim2.fromOffset(6, 30),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		ScrollBarThickness = 3,
-		ScrollBarImageColor3 = Library.Theme.Accent1,
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		CanvasSize = UDim2.new(0, 0, 0, 0),
-		ZIndex = 51,
-		Parent = logInner,
-	})
-	Util.RegisterTheme(scrollFrame, "ScrollBarImageColor3", "AccentColor")
-
-	New("UIListLayout", {
-		Padding = UDim.new(0, 3),
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Parent = scrollFrame,
-	})
-
-	-- Draggable handling
-	do
-		local dragging, dragStart, startPos
-		header.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then
-				dragging = true
-				dragStart = input.Position
-				startPos = logOuter.Position
-			end
-		end)
-		UserInputService.InputChanged:Connect(function(input)
-			if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-				local delta = input.Position - dragStart
-				logOuter.Position = UDim2.fromOffset(startPos.X.Offset + delta.X, startPos.Y.Offset + delta.Y)
-			end
-		end)
-		UserInputService.InputEnded:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 and dragging then
-				dragging = false
-				Library.Flags["__logger_pos"] = { X = logOuter.Position.X.Offset, Y = logOuter.Position.Y.Offset }
-			end
-		end)
-	end
-
-	local LoggerObj = {
-		Logs = {},
-		Frame = logOuter,
-	}
-
-	function LoggerObj:AddLog(text, tag, customColor)
-		text = tostring(text or "")
-		tag = tag or "INFO"
-		local okClk, clk = pcall(os.date, "%H:%M:%S")
-		local timeStr = okClk and clk or "00:00:00"
-
-		local tagColor = customColor
-		if not tagColor then
-			local tagUp = string.upper(tag)
-			if tagUp:find("ERR") or tagUp:find("FAIL") or tagUp:find("RISK") then
-				tagColor = Library.Theme.Risky
-			elseif tagUp:find("WARN") then
-				tagColor = Color3.fromRGB(245, 175, 65)
-			elseif tagUp:find("AIM") or tagUp:find("RAGE") then
-				tagColor = Color3.fromRGB(255, 115, 115)
-			elseif tagUp:find("VIS") or tagUp:find("ESP") then
-				tagColor = Color3.fromRGB(115, 215, 255)
-			elseif tagUp:find("CONF") or tagUp:find("SAVE") then
-				tagColor = Color3.fromRGB(168, 219, 95)
-			else
-				tagColor = Library.Theme.Accent1
-			end
-		end
-
-		local row = New("Frame", {
-			Size = UDim2.new(1, 0, 0, 16),
-			BackgroundTransparency = 1,
-			ZIndex = 52,
-			Parent = scrollFrame,
-		})
-
-		New("TextLabel", {
-			Size = UDim2.fromOffset(56, 16),
-			Position = UDim2.fromOffset(0, 0),
-			BackgroundTransparency = 1,
-			Font = Library.Theme.Font,
-			TextSize = Library.Theme.FontSize - 1,
-			TextColor3 = Library.Theme.TextDim,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Text = string.format("[%s]", timeStr),
-			ZIndex = 53,
-			Parent = row,
-		})
-
-		New("TextLabel", {
-			Size = UDim2.fromOffset(60, 16),
-			Position = UDim2.fromOffset(60, 0),
-			BackgroundTransparency = 1,
-			Font = Library.Theme.FontBold,
-			TextSize = Library.Theme.FontSize - 1,
-			TextColor3 = tagColor,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Text = string.format("[%s]", string.upper(tag)),
-			ZIndex = 53,
-			Parent = row,
-		})
-
-		local msgLbl = New("TextLabel", {
-			Size = UDim2.new(1, -125, 0, 16),
-			Position = UDim2.fromOffset(125, 0),
-			BackgroundTransparency = 1,
-			Font = Library.Theme.Font,
-			TextSize = Library.Theme.FontSize,
-			TextColor3 = Library.Theme.Text,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Text = text,
-			ZIndex = 53,
-			Parent = row,
-		})
-		Util.RegisterTheme(msgLbl, "TextColor3", "FontColor")
-
-		table.insert(LoggerObj.Logs, {
-			Time = timeStr,
-			Tag = tag,
-			Message = text,
-			Instance = row,
-		})
-
-		if #LoggerObj.Logs > 150 then
-			local oldest = table.remove(LoggerObj.Logs, 1)
-			if oldest and oldest.Instance then
-				oldest.Instance:Destroy()
-			end
-		end
-
-		task.defer(function()
-			if scrollFrame and scrollFrame.Parent then
-				scrollFrame.CanvasPosition = Vector2.new(0, math.max(0, scrollFrame.AbsoluteCanvasSize.Y - scrollFrame.AbsoluteWindowSize.Y + 20))
-			end
-		end)
-	end
-
-	function LoggerObj:Clear()
-		for _, entry in ipairs(LoggerObj.Logs) do
-			if entry.Instance then
-				pcall(function() entry.Instance:Destroy() end)
-			end
-		end
-		table.clear(LoggerObj.Logs)
-	end
-
-	function LoggerObj:SetVisible(bool)
-		logOuter.Visible = bool
-	end
-
-	function LoggerObj:Toggle()
-		logOuter.Visible = not logOuter.Visible
-	end
-
-	clearBtn.MouseButton1Click:Connect(function()
-		LoggerObj:Clear()
-	end)
-
-	copyBtn.MouseButton1Click:Connect(function()
-		local outLines = {}
-		for _, e in ipairs(LoggerObj.Logs) do
-			table.insert(outLines, string.format("[%s] [%s] %s", e.Time, e.Tag, e.Message))
-		end
-		local fullText = table.concat(outLines, "\n")
-		if typeof(setclipboard) == "function" then
-			pcall(setclipboard, fullText)
-		elseif typeof(toclipboard) == "function" then
-			pcall(toclipboard, fullText)
-		end
-		Library:Notify({ Title = "Logger", Text = "Copied all logs to clipboard!", Duration = 2 })
-	end)
-
-	Library.Logger = LoggerObj
-	return LoggerObj
-end
-
-function Library:Log(text, tag, color)
-	if Library.Logger then
-		Library.Logger:AddLog(text, tag, color)
-	else
-		print(string.format("[%s] %s", tostring(tag or "INFO"), tostring(text or "")))
 	end
 end
 
