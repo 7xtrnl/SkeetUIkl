@@ -1591,103 +1591,49 @@ function Library:CreateWindow(cfg)
 		end
 	end)
 
-	-- Invisible resize bars for window resizing
-	local RESIZE_SIZE = 6
+	-- Improved resize bars for window resizing - cleaner and more responsive
+	local RESIZE_SIZE = 8
+	local CORNER_SIZE = 16
 	local MIN_SIZE = Vector2.new(400, 300)
 	local resizeData = {
 		resizing = false,
 		direction = nil,
 		startPos = nil,
 		startSize = nil,
+		startPosition = nil,
 	}
 
-	-- Top resize bar
-	local topResize = New("TextButton", {
-		Size = UDim2.new(1, 0, 0, RESIZE_SIZE),
-		Position = UDim2.fromOffset(0, 0),
-		BackgroundTransparency = 1,
-		Text = "",
-		ZIndex = 100,
-		Parent = winOuter,
-	})
+	-- Create resize handles
+	local function createResizeHandle(size, position, parent, zIndex)
+		return New("TextButton", {
+			Size = size,
+			Position = position,
+			BackgroundTransparency = 1,
+			Text = "",
+			ZIndex = zIndex,
+			Parent = parent,
+		})
+	end
 
-	-- Bottom resize bar
-	local bottomResize = New("TextButton", {
-		Size = UDim2.new(1, 0, 0, RESIZE_SIZE),
-		Position = UDim2.new(0, 1, 1, -RESIZE_SIZE),
-		AnchorPoint = Vector2.new(0, 1),
-		BackgroundTransparency = 1,
-		Text = "",
-		ZIndex = 100,
-		Parent = winOuter,
-	})
+	-- Edge resize handles
+	local topResize = createResizeHandle(UDim2.new(1, 0, 0, RESIZE_SIZE), UDim2.fromOffset(0, 0), winOuter, 100)
+	local bottomResize = createResizeHandle(UDim2.new(1, 0, 0, RESIZE_SIZE), UDim2.new(0, 0, 1, -RESIZE_SIZE), winOuter, 100)
+	local leftResize = createResizeHandle(UDim2.new(0, RESIZE_SIZE, 1, 0), UDim2.fromOffset(0, 0), winOuter, 100)
+	local rightResize = createResizeHandle(UDim2.new(0, RESIZE_SIZE, 1, 0), UDim2.new(1, -RESIZE_SIZE, 0, 0), winOuter, 100)
 
-	-- Left resize bar
-	local leftResize = New("TextButton", {
-		Size = UDim2.new(0, RESIZE_SIZE, 1, 0),
-		Position = UDim2.fromOffset(0, 0),
-		BackgroundTransparency = 1,
-		Text = "",
-		ZIndex = 100,
-		Parent = winOuter,
-	})
+	-- Corner resize handles (take priority over edges)
+	local topLeftResize = createResizeHandle(UDim2.fromOffset(CORNER_SIZE, CORNER_SIZE), UDim2.fromOffset(0, 0), winOuter, 101)
+	local topRightResize = createResizeHandle(UDim2.fromOffset(CORNER_SIZE, CORNER_SIZE), UDim2.new(1, -CORNER_SIZE, 0, 0), winOuter, 101)
+	local bottomLeftResize = createResizeHandle(UDim2.fromOffset(CORNER_SIZE, CORNER_SIZE), UDim2.new(0, 0, 1, -CORNER_SIZE), winOuter, 101)
+	local bottomRightResize = createResizeHandle(UDim2.fromOffset(CORNER_SIZE, CORNER_SIZE), UDim2.new(1, -CORNER_SIZE, 1, -CORNER_SIZE), winOuter, 101)
 
-	-- Right resize bar
-	local rightResize = New("TextButton", {
-		Size = UDim2.new(0, RESIZE_SIZE, 1, 0),
-		Position = UDim2.new(1, -RESIZE_SIZE, 0, 0),
-		BackgroundTransparency = 1,
-		Text = "",
-		ZIndex = 100,
-		Parent = winOuter,
-	})
-
-	-- Corner resize bars (top-left, top-right, bottom-left, bottom-right)
-	local cornerSize = 12
-	local topLeftResize = New("TextButton", {
-		Size = UDim2.fromOffset(cornerSize, cornerSize),
-		Position = UDim2.fromOffset(0, 0),
-		BackgroundTransparency = 1,
-		Text = "",
-		ZIndex = 101,
-		Parent = winOuter,
-	})
-
-	local topRightResize = New("TextButton", {
-		Size = UDim2.fromOffset(cornerSize, cornerSize),
-		Position = UDim2.new(1, -cornerSize, 0, 0),
-		BackgroundTransparency = 1,
-		Text = "",
-		ZIndex = 101,
-		Parent = winOuter,
-	})
-
-	local bottomLeftResize = New("TextButton", {
-		Size = UDim2.fromOffset(cornerSize, cornerSize),
-		Position = UDim2.new(0, 1, 1, -cornerSize),
-		AnchorPoint = Vector2.new(0, 1),
-		BackgroundTransparency = 1,
-		Text = "",
-		ZIndex = 101,
-		Parent = winOuter,
-	})
-
-	local bottomRightResize = New("TextButton", {
-		Size = UDim2.fromOffset(cornerSize, cornerSize),
-		Position = UDim2.new(1, -cornerSize, 1, -cornerSize),
-		AnchorPoint = Vector2.new(1, 1),
-		BackgroundTransparency = 1,
-		Text = "",
-		ZIndex = 101,
-		Parent = winOuter,
-	})
-
-	-- Resize handling function
+	-- Improved resize handling
 	local function startResize(direction)
 		resizeData.resizing = true
 		resizeData.direction = direction
 		resizeData.startPos = UserInputService:GetMouseLocation()
 		resizeData.startSize = winOuter.Size
+		resizeData.startPosition = winOuter.Position
 	end
 
 	local function handleResize()
@@ -1696,9 +1642,10 @@ function Library:CreateWindow(cfg)
 		local currentPos = UserInputService:GetMouseLocation()
 		local delta = currentPos - resizeData.startPos
 		local currentSize = resizeData.startSize
+		local currentPosOffset = resizeData.startPosition
 
 		local newSize = UDim2.fromOffset(currentSize.X.Offset, currentSize.Y.Offset)
-		local newPosition = winOuter.Position
+		local newPosition = UDim2.fromOffset(currentPosOffset.X.Offset, currentPosOffset.Y.Offset)
 
 		if resizeData.direction:find("right") then
 			newSize = UDim2.fromOffset(math.max(MIN_SIZE.X, currentSize.X.Offset + delta.X), currentSize.Y.Offset)
@@ -1706,7 +1653,7 @@ function Library:CreateWindow(cfg)
 		if resizeData.direction:find("left") then
 			local newWidth = math.max(MIN_SIZE.X, currentSize.X.Offset - delta.X)
 			newSize = UDim2.fromOffset(newWidth, currentSize.Y.Offset)
-			newPosition = UDim2.fromOffset(currentPos.X, newPosition.Y.Offset)
+			newPosition = UDim2.fromOffset(currentPosOffset.X.Offset + delta.X, currentPosOffset.Y.Offset)
 		end
 		if resizeData.direction:find("bottom") then
 			newSize = UDim2.fromOffset(currentSize.X.Offset, math.max(MIN_SIZE.Y, currentSize.Y.Offset + delta.Y))
@@ -1714,13 +1661,11 @@ function Library:CreateWindow(cfg)
 		if resizeData.direction:find("top") then
 			local newHeight = math.max(MIN_SIZE.Y, currentSize.Y.Offset - delta.Y)
 			newSize = UDim2.fromOffset(currentSize.X.Offset, newHeight)
-			newPosition = UDim2.new(newPosition.X.Scale, newPosition.X.Offset, 0, currentPos.Y)
+			newPosition = UDim2.fromOffset(currentPosOffset.X.Offset, currentPosOffset.Y.Offset + delta.Y)
 		end
 
 		winOuter.Size = newSize
-		if resizeData.direction:find("left") or resizeData.direction:find("top") then
-			winOuter.Position = newPosition
-		end
+		winOuter.Position = newPosition
 	end
 
 	local function endResize()
@@ -1728,6 +1673,7 @@ function Library:CreateWindow(cfg)
 		resizeData.direction = nil
 		resizeData.startPos = nil
 		resizeData.startSize = nil
+		resizeData.startPosition = nil
 	end
 
 	-- Connect resize events
@@ -1753,59 +1699,30 @@ function Library:CreateWindow(cfg)
 		end
 	end))
 
-	-- Cursor changes on hover
-	topResize.MouseEnter:Connect(function()
-		if not resizeData.resizing then
-			UserInputService.MouseIcon = "https://www.roblox.com/asset/?id=6055340289" -- Vertical resize cursor
-		end
-	end)
-	bottomResize.MouseEnter:Connect(function()
-		if not resizeData.resizing then
-			UserInputService.MouseIcon = "https://www.roblox.com/asset/?id=6055340289"
-		end
-	end)
-	leftResize.MouseEnter:Connect(function()
-		if not resizeData.resizing then
-			UserInputService.MouseIcon = "https://www.roblox.com/asset/?id=6055340289"
-		end
-	end)
-	rightResize.MouseEnter:Connect(function()
-		if not resizeData.resizing then
-			UserInputService.MouseIcon = "https://www.roblox.com/asset/?id=6055340289"
-		end
-	end)
+	-- Cursor handling - using standard cursors instead of images
+	local resizeHandles = {
+		{handle = topResize, cursor = "UpArrow"},
+		{handle = bottomResize, cursor = "UpArrow"},
+		{handle = leftResize, cursor = "SizeWE"},
+		{handle = rightResize, cursor = "SizeWE"},
+		{handle = topLeftResize, cursor = "SizeNWSE"},
+		{handle = topRightResize, cursor = "SizeNESW"},
+		{handle = bottomLeftResize, cursor = "SizeNESW"},
+		{handle = bottomRightResize, cursor = "SizeNWSE"},
+	}
 
-	topLeftResize.MouseEnter:Connect(function()
-		if not resizeData.resizing then
-			UserInputService.MouseIcon = "https://www.roblox.com/asset/?id=6055340289"
-		end
-	end)
-	topRightResize.MouseEnter:Connect(function()
-		if not resizeData.resizing then
-			UserInputService.MouseIcon = "https://www.roblox.com/asset/?id=6055340289"
-		end
-	end)
-	bottomLeftResize.MouseEnter:Connect(function()
-		if not resizeData.resizing then
-			UserInputService.MouseIcon = "https://www.roblox.com/asset/?id=6055340289"
-		end
-	end)
-	bottomRightResize.MouseEnter:Connect(function()
-		if not resizeData.resizing then
-			UserInputService.MouseIcon = "https://www.roblox.com/asset/?id=6055340289"
-		end
-	end)
-
-	local function resetCursor()
-		for _, resize in ipairs({topResize, bottomResize, leftResize, rightResize, topLeftResize, topRightResize, bottomLeftResize, bottomRightResize}) do
-			resize.MouseLeave:Connect(function()
-				if not resizeData.resizing then
-					UserInputService.MouseIcon = ""
-				end
-			end)
-		end
+	for _, data in ipairs(resizeHandles) do
+		data.handle.MouseEnter:Connect(function()
+			if not resizeData.resizing then
+				UserInputService.MouseIcon = data.cursor
+			end
+		end)
+		data.handle.MouseLeave:Connect(function()
+			if not resizeData.resizing then
+				UserInputService.MouseIcon = ""
+			end
+		end)
 	end
-	resetCursor()
 
 	local Window = { Tabs = {} }
 
@@ -3904,6 +3821,22 @@ function Library:SetTheme(themeTable)
 	for name, col in pairs(themeTable or {}) do
 		Library:SetThemeColor(name, col)
 	end
+end
+
+function Library:CreateLogger(cfg)
+	-- Stub function for backward compatibility
+	return {
+		AddLog = function() end,
+		Clear = function() end,
+		SetVisible = function() end,
+		Toggle = function() end,
+		Frame = Instance.new("Frame"),
+	}
+end
+
+function Library:Log(text, tag, color)
+	-- Stub function for backward compatibility
+	print(string.format("[%s] %s", tostring(tag or "INFO"), tostring(text or "")))
 end
 
 function Library:Unload()
