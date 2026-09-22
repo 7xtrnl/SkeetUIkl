@@ -266,8 +266,35 @@ local Library = {
 		Close     = "rbxassetid://10709791108",
 		Layers    = "rbxassetid://10723387563",
 		Folder    = "rbxassetid://10723387693",
-	}
+	},
 }
+
+-- Local files (executor workspace). Tries workspace root then SkeetwareUI/Assets.
+local function LoadLocalAsset(fileName)
+	local getAsset = getcustomasset or getsynasset
+	if not (getAsset and isfile) then
+		return nil
+	end
+	local paths = {
+		fileName,
+		Directory .. Folders.Assets .. "/" .. fileName,
+		Directory .. "/" .. fileName,
+	}
+	for _, path in ipairs(paths) do
+		if isfile(path) then
+			local ok, asset = pcall(getAsset, path)
+			if ok and typeof(asset) == "string" and asset ~= "" then
+				if writefile and path == fileName then
+					pcall(writefile, Directory .. Folders.Assets .. "/" .. fileName, readfile(path))
+				end
+				return asset
+			end
+		end
+	end
+	return nil
+end
+
+Library.Logo = LoadLocalAsset("new.gif")
 
 --============================================================================--
 -- UTILITIES & THEME REGISTRY
@@ -1222,42 +1249,49 @@ function Library:CreateWindow(cfg)
 		Parent = sidebar,
 	})
 
+	local hasLogo = typeof(Library.Logo) == "string"
+
 	local brandIcon = New("ImageLabel", {
-		Size = UDim2.fromOffset(32, 32),
-		Position = UDim2.fromOffset(8, 9),
+		Size = hasLogo and UDim2.new(1, -10, 1, -8) or UDim2.fromOffset(32, 32),
+		Position = hasLogo and UDim2.fromOffset(5, 4) or UDim2.fromOffset(8, 9),
 		BackgroundTransparency = 1,
-		Image = Library.Icons.Shield,
-		ImageColor3 = Library.Theme.Accent1,
+		Image = hasLogo and Library.Logo or Library.Icons.Shield,
+		ImageColor3 = hasLogo and Color3.new(1, 1, 1) or Library.Theme.Accent1,
+		ScaleType = Enum.ScaleType.Fit,
 		ZIndex = 12,
 		Parent = brandingSection,
 	})
-	Util.RegisterTheme(brandIcon, "ImageColor3", "AccentColor")
+	if not hasLogo then
+		Util.RegisterTheme(brandIcon, "ImageColor3", "AccentColor")
+	end
 
-	New("TextLabel", {
-		Size = UDim2.new(1, -50, 0, 20),
-		Position = UDim2.fromOffset(48, 12),
-		BackgroundTransparency = 1,
-		Font = Library.Theme.FontBold,
-		TextSize = Library.Theme.FontSize + 1,
-		TextColor3 = Library.Theme.Text,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = "SKEET",
-		ZIndex = 12,
-		Parent = brandingSection,
-	})
+	if not hasLogo then
+		New("TextLabel", {
+			Size = UDim2.new(1, -50, 0, 20),
+			Position = UDim2.fromOffset(48, 12),
+			BackgroundTransparency = 1,
+			Font = Library.Theme.FontBold,
+			TextSize = Library.Theme.FontSize + 1,
+			TextColor3 = Library.Theme.Text,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Text = "SKEET",
+			ZIndex = 12,
+			Parent = brandingSection,
+		})
 
-	New("TextLabel", {
-		Size = UDim2.new(1, -50, 0, 14),
-		Position = UDim2.fromOffset(48, 30),
-		BackgroundTransparency = 1,
-		Font = Library.Theme.Font,
-		TextSize = Library.Theme.FontSize - 1,
-		TextColor3 = Library.Theme.TextDim,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = "WARE.CC",
-		ZIndex = 12,
-		Parent = brandingSection,
-	})
+		New("TextLabel", {
+			Size = UDim2.new(1, -50, 0, 14),
+			Position = UDim2.fromOffset(48, 30),
+			BackgroundTransparency = 1,
+			Font = Library.Theme.Font,
+			TextSize = Library.Theme.FontSize - 1,
+			TextColor3 = Library.Theme.TextDim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Text = "WARE.CC",
+			ZIndex = 12,
+			Parent = brandingSection,
+		})
+	end
 
 	-- Tab list in sidebar
 	local sidebarTabList = New("Frame", {
