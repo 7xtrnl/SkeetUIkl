@@ -269,32 +269,55 @@ local Library = {
 	},
 }
 
--- Local files (executor workspace). Tries workspace root then SkeetwareUI/Assets.
-local function LoadLocalAsset(fileName)
+-- Logo GIF from GitHub (cached locally for getcustomasset).
+local LOGO_FILE = "new.gif"
+local LOGO_URL = "https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/main/new.gif"
+
+local function LoadLogoAsset()
 	local getAsset = getcustomasset or getsynasset
-	if not (getAsset and isfile) then
+	if not getAsset then
 		return nil
 	end
 	local paths = {
-		fileName,
-		Directory .. Folders.Assets .. "/" .. fileName,
-		Directory .. "/" .. fileName,
+		LOGO_FILE,
+		Directory .. Folders.Assets .. "/" .. LOGO_FILE,
+		Directory .. "/" .. LOGO_FILE,
 	}
+	local function fromPath(path)
+		local ok, asset = pcall(getAsset, path)
+		if ok and typeof(asset) == "string" and asset ~= "" then
+			return asset
+		end
+		return nil
+	end
 	for _, path in ipairs(paths) do
-		if isfile(path) then
-			local ok, asset = pcall(getAsset, path)
-			if ok and typeof(asset) == "string" and asset ~= "" then
-				if writefile and path == fileName then
-					pcall(writefile, Directory .. Folders.Assets .. "/" .. fileName, readfile(path))
-				end
+		if isfile and isfile(path) then
+			local asset = fromPath(path)
+			if asset then
 				return asset
+			end
+		end
+	end
+	if writefile then
+		local okGet, data = pcall(function()
+			return game:HttpGet(LOGO_URL)
+		end)
+		if okGet and typeof(data) == "string" and #data > 32 then
+			local dest = Directory .. Folders.Assets .. "/" .. LOGO_FILE
+			pcall(writefile, dest, data)
+			pcall(writefile, LOGO_FILE, data)
+			if isfile and isfile(dest) then
+				return fromPath(dest)
+			end
+			if isfile and isfile(LOGO_FILE) then
+				return fromPath(LOGO_FILE)
 			end
 		end
 	end
 	return nil
 end
 
-Library.Logo = LoadLocalAsset("new.gif")
+Library.Logo = LoadLogoAsset()
 
 --============================================================================--
 -- UTILITIES & THEME REGISTRY
@@ -844,19 +867,27 @@ function Library:CreateWatermark(customTitle)
 	wmOuter.ZIndex = 50
 	Util.AddSkeetGradientBar(wmInner, 2)
 
+	local hasLogo = typeof(Library.Logo) == "string"
+	local wmLogoW = hasLogo and 72 or 13
+	local wmIconPad = 6
+
 	local wmIcon = New("ImageLabel", {
-		Size = UDim2.fromOffset(13, 13),
-		Position = UDim2.fromOffset(6, 5),
+		Size = UDim2.fromOffset(wmLogoW, hasLogo and 18 or 13),
+		Position = UDim2.fromOffset(wmIconPad, hasLogo and 3 or 5),
 		BackgroundTransparency = 1,
-		Image = Library.Icons.Shield,
-		ImageColor3 = Library.Theme.Accent1,
+		Image = hasLogo and Library.Logo or Library.Icons.Shield,
+		ImageColor3 = hasLogo and Color3.new(1, 1, 1) or Library.Theme.Accent1,
+		ScaleType = Enum.ScaleType.Fit,
 		Parent = wmInner,
 	})
-	Util.RegisterTheme(wmIcon, "ImageColor3", "AccentColor")
+	if not hasLogo then
+		Util.RegisterTheme(wmIcon, "ImageColor3", "AccentColor")
+	end
 
+	local wmTextX = wmIconPad + wmLogoW + 6
 	local wmLabel = New("TextLabel", {
-		Size = UDim2.new(1, -26, 1, -2),
-		Position = UDim2.fromOffset(24, 2),
+		Size = UDim2.new(1, -wmTextX - 4, 1, -2),
+		Position = UDim2.fromOffset(wmTextX, 2),
 		BackgroundTransparency = 1,
 		Font = Library.Theme.Font,
 		TextSize = Library.Theme.FontSize - 1,
@@ -917,7 +948,7 @@ function Library:CreateWatermark(customTitle)
 			local okClk, clock = pcall(os.date, "%H:%M")
 			local formatted = string.format("%s | %s | %d fps | %d ms | %s", title, LocalPlayer and LocalPlayer.DisplayName or "User", fps, ping, okClk and clock or "")
 			wmLabel.Text = formatted
-			local neededW = math.max(260, wmLabel.TextBounds.X + 36)
+			local neededW = math.max(260, wmLabel.TextBounds.X + wmTextX + 16)
 			wmOuter.Size = UDim2.fromOffset(neededW, 24)
 			fpsCount = 0
 			lastFpsUpdate = tick()
@@ -1241,31 +1272,40 @@ function Library:CreateWindow(cfg)
 
 
 	-- Branding section - simplified
+	local hasLogo = typeof(Library.Logo) == "string"
+	local brandH = hasLogo and 36 or 50
+
 	local brandingSection = New("Frame", {
-		Size = UDim2.new(1, 0, 0, 50),
+		Size = UDim2.new(1, 0, 0, brandH),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundTransparency = 1,
 		ZIndex = 11,
 		Parent = sidebar,
 	})
 
-	local hasLogo = typeof(Library.Logo) == "string"
-
-	local brandIcon = New("ImageLabel", {
-		Size = hasLogo and UDim2.new(1, -10, 1, -8) or UDim2.fromOffset(32, 32),
-		Position = hasLogo and UDim2.fromOffset(5, 4) or UDim2.fromOffset(8, 9),
-		BackgroundTransparency = 1,
-		Image = hasLogo and Library.Logo or Library.Icons.Shield,
-		ImageColor3 = hasLogo and Color3.new(1, 1, 1) or Library.Theme.Accent1,
-		ScaleType = Enum.ScaleType.Fit,
-		ZIndex = 12,
-		Parent = brandingSection,
-	})
-	if not hasLogo then
+	if hasLogo then
+		New("ImageLabel", {
+			Size = UDim2.new(1, -8, 1, -4),
+			Position = UDim2.fromOffset(4, 2),
+			BackgroundTransparency = 1,
+			Image = Library.Logo,
+			ImageColor3 = Color3.new(1, 1, 1),
+			ScaleType = Enum.ScaleType.Fit,
+			ZIndex = 12,
+			Parent = brandingSection,
+		})
+	else
+		local brandIcon = New("ImageLabel", {
+			Size = UDim2.fromOffset(32, 32),
+			Position = UDim2.fromOffset(8, 9),
+			BackgroundTransparency = 1,
+			Image = Library.Icons.Shield,
+			ImageColor3 = Library.Theme.Accent1,
+			ZIndex = 12,
+			Parent = brandingSection,
+		})
 		Util.RegisterTheme(brandIcon, "ImageColor3", "AccentColor")
-	end
 
-	if not hasLogo then
 		New("TextLabel", {
 			Size = UDim2.new(1, -50, 0, 20),
 			Position = UDim2.fromOffset(48, 12),
@@ -1295,8 +1335,8 @@ function Library:CreateWindow(cfg)
 
 	-- Tab list in sidebar
 	local sidebarTabList = New("Frame", {
-		Size = UDim2.new(1, 0, 1, -60),
-		Position = UDim2.fromOffset(0, 55),
+		Size = UDim2.new(1, 0, 1, -(brandH + 10)),
+		Position = UDim2.fromOffset(0, brandH + 5),
 		BackgroundTransparency = 1,
 		ZIndex = 11,
 		Parent = sidebar,
@@ -1315,6 +1355,21 @@ function Library:CreateWindow(cfg)
 		Parent = winInner,
 	})
 
+	local titleLogoW = 0
+	if hasLogo then
+		titleLogoW = 118
+		New("ImageLabel", {
+			Size = UDim2.fromOffset(titleLogoW, 26),
+			Position = UDim2.fromOffset(6, 3),
+			BackgroundTransparency = 1,
+			Image = Library.Logo,
+			ImageColor3 = Color3.new(1, 1, 1),
+			ScaleType = Enum.ScaleType.Fit,
+			ZIndex = 12,
+			Parent = titleBar,
+		})
+	end
+
 	-- Juanitahaxx Signature Sinusoidal Animated Wave Title
 	local uppercaseTitle = string.upper(title)
 	local letterWidth = 8
@@ -1325,7 +1380,7 @@ function Library:CreateWindow(cfg)
 
 	local titleContainer = New("Frame", {
 		Size = UDim2.new(0, math.min(260, #uppercaseTitle * letterWidth + 12), 1, 0),
-		Position = UDim2.fromOffset(10, 0),
+		Position = UDim2.fromOffset((hasLogo and (titleLogoW + 10) or 10), 0),
 		BackgroundTransparency = 1,
 		ClipsDescendants = false,
 		ZIndex = 11,
