@@ -1457,11 +1457,10 @@ function Library:CreateWindow(cfg)
 				if snowLayer then snowLayer.Visible = true end
 
 				winOuter.Visible = true
-				winScale.Scale = 0.955
-				winOuter.Size = UDim2.fromOffset(winSize.X.Offset - 18, winSize.Y.Offset - 18)
-				-- Overshoot "pop" for a snappy, premium open feel
-				Util.Tween(winScale, 0.24, { Scale = 1 }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-				Util.Tween(winOuter, 0.2, { Size = winSize }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+				winScale.Scale = 0.94
+				winOuter.Size = winSize
+				-- Overshoot "pop" for a snappy, premium open feel without size distortion
+				Util.Tween(winScale, 0.22, { Scale = 1 }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 				Util.PlaySound("open")
 			else
 				-- Hide blur overlay
@@ -1470,11 +1469,10 @@ function Library:CreateWindow(cfg)
 					Util.Tween(blurEffect, 0.25, { Size = 0 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 				end
 
-				local t = Util.Tween(winOuter, 0.15, { Size = UDim2.fromOffset(winSize.X.Offset - 18, winSize.Y.Offset - 18) }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
-				Util.Tween(winScale, 0.16, { Scale = 0.955 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+				local t = Util.Tween(winScale, 0.16, { Scale = 0.94 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 				t.Completed:Connect(function()
 					winOuter.Visible = false
-					winOuter.Size = winSize
+					winScale.Scale = 1
 					blurOverlay.Visible = false
 					if snowLayer then snowLayer.Visible = false end
 				end)
@@ -1625,14 +1623,38 @@ function Library:CreateWindow(cfg)
 	-- Improved resize bars for window resizing - cleaner and more responsive
 	local RESIZE_SIZE = 8
 	local CORNER_SIZE = 16
-	local MIN_SIZE = Vector2.new(400, 300)
+	local MIN_SIZE = Vector2.new(450, 320)
 	local resizeData = {
 		resizing = false,
 		direction = nil,
-		startPos = nil,
+		startMouse = nil,
 		startSize = nil,
-		startPosition = nil,
+		startPos = nil,
 	}
+
+	-- Visual corner grip indicator in the bottom-right corner for high-end aesthetic
+	local gripFrame = New("Frame", {
+		Size = UDim2.fromOffset(14, 14),
+		Position = UDim2.new(1, -15, 1, -15),
+		BackgroundTransparency = 1,
+		ZIndex = 25,
+		Parent = winInner,
+	})
+
+	-- 3 diagonal grip notches like professional desktop applications
+	for i = 1, 3 do
+		local dotOffset = (i - 1) * 4
+		local notch = New("Frame", {
+			Size = UDim2.fromOffset(i * 3 + 1, 1),
+			Position = UDim2.new(1, - (i * 3 + 2), 1, - (4 - i) * 3 - 2),
+			BackgroundColor3 = Library.Theme.TextDim,
+			BackgroundTransparency = 0.6,
+			BorderSizePixel = 0,
+			ZIndex = 26,
+			Parent = gripFrame,
+		})
+		Util.RegisterTheme(notch, "BackgroundColor3", "FontColor")
+	end
 
 	-- Create resize handles
 	local function createResizeHandle(size, position, parent, zIndex)
@@ -1641,16 +1663,17 @@ function Library:CreateWindow(cfg)
 			Position = position,
 			BackgroundTransparency = 1,
 			Text = "",
+			AutoButtonColor = false,
 			ZIndex = zIndex,
 			Parent = parent,
 		})
 	end
 
 	-- Edge resize handles
-	local topResize = createResizeHandle(UDim2.new(1, 0, 0, RESIZE_SIZE), UDim2.fromOffset(0, 0), winOuter, 100)
-	local bottomResize = createResizeHandle(UDim2.new(1, 0, 0, RESIZE_SIZE), UDim2.new(0, 0, 1, -RESIZE_SIZE), winOuter, 100)
-	local leftResize = createResizeHandle(UDim2.new(0, RESIZE_SIZE, 1, 0), UDim2.fromOffset(0, 0), winOuter, 100)
-	local rightResize = createResizeHandle(UDim2.new(0, RESIZE_SIZE, 1, 0), UDim2.new(1, -RESIZE_SIZE, 0, 0), winOuter, 100)
+	local topResize = createResizeHandle(UDim2.new(1, -CORNER_SIZE * 2, 0, RESIZE_SIZE), UDim2.fromOffset(CORNER_SIZE, 0), winOuter, 100)
+	local bottomResize = createResizeHandle(UDim2.new(1, -CORNER_SIZE * 2, 0, RESIZE_SIZE), UDim2.new(0, CORNER_SIZE, 1, -RESIZE_SIZE), winOuter, 100)
+	local leftResize = createResizeHandle(UDim2.new(0, RESIZE_SIZE, 1, -CORNER_SIZE * 2), UDim2.fromOffset(0, CORNER_SIZE), winOuter, 100)
+	local rightResize = createResizeHandle(UDim2.new(0, RESIZE_SIZE, 1, -CORNER_SIZE * 2), UDim2.new(1, -RESIZE_SIZE, 0, CORNER_SIZE), winOuter, 100)
 
 	-- Corner resize handles (take priority over edges)
 	local topLeftResize = createResizeHandle(UDim2.fromOffset(CORNER_SIZE, CORNER_SIZE), UDim2.fromOffset(0, 0), winOuter, 101)
@@ -1658,53 +1681,79 @@ function Library:CreateWindow(cfg)
 	local bottomLeftResize = createResizeHandle(UDim2.fromOffset(CORNER_SIZE, CORNER_SIZE), UDim2.new(0, 0, 1, -CORNER_SIZE), winOuter, 101)
 	local bottomRightResize = createResizeHandle(UDim2.fromOffset(CORNER_SIZE, CORNER_SIZE), UDim2.new(1, -CORNER_SIZE, 1, -CORNER_SIZE), winOuter, 101)
 
-	-- Improved resize handling
+	-- Accurate resize handling accounting for AnchorPoint = Vector2.new(0.5, 0.5)
 	local function startResize(direction)
 		resizeData.resizing = true
 		resizeData.direction = direction
-		resizeData.startPos = UserInputService:GetMouseLocation()
-		resizeData.startSize = winOuter.Size
-		resizeData.startPosition = winOuter.Position
+		resizeData.startMouse = UserInputService:GetMouseLocation()
+		resizeData.startSize = Vector2.new(winOuter.AbsoluteSize.X, winOuter.AbsoluteSize.Y)
+		resizeData.startPos = winOuter.Position
 	end
 
 	local function handleResize()
-		if not resizeData.resizing then return end
+		if not resizeData.resizing or not resizeData.startMouse then return end
 
-		local currentPos = UserInputService:GetMouseLocation()
-		local delta = currentPos - resizeData.startPos
-		local currentSize = resizeData.startSize
-		local currentPosOffset = resizeData.startPosition
+		local currentMouse = UserInputService:GetMouseLocation()
+		local delta = currentMouse - resizeData.startMouse
+		local sW = resizeData.startSize.X
+		local sH = resizeData.startSize.Y
+		local dir = resizeData.direction
 
-		local newSize = UDim2.fromOffset(currentSize.X.Offset, currentSize.Y.Offset)
-		local newPosition = UDim2.fromOffset(currentPosOffset.X.Offset, currentPosOffset.Y.Offset)
+		local targetW = sW
+		local targetH = sH
 
-		if resizeData.direction:find("right") then
-			newSize = UDim2.fromOffset(math.max(MIN_SIZE.X, currentSize.X.Offset + delta.X), currentSize.Y.Offset)
-		end
-		if resizeData.direction:find("left") then
-			local newWidth = math.max(MIN_SIZE.X, currentSize.X.Offset - delta.X)
-			newSize = UDim2.fromOffset(newWidth, currentSize.Y.Offset)
-			newPosition = UDim2.fromOffset(currentPosOffset.X.Offset + delta.X, currentPosOffset.Y.Offset)
-		end
-		if resizeData.direction:find("bottom") then
-			newSize = UDim2.fromOffset(currentSize.X.Offset, math.max(MIN_SIZE.Y, currentSize.Y.Offset + delta.Y))
-		end
-		if resizeData.direction:find("top") then
-			local newHeight = math.max(MIN_SIZE.Y, currentSize.Y.Offset - delta.Y)
-			newSize = UDim2.fromOffset(currentSize.X.Offset, newHeight)
-			newPosition = UDim2.fromOffset(currentPosOffset.X.Offset, currentPosOffset.Y.Offset + delta.Y)
+		if dir:find("right") then
+			targetW = sW + delta.X
+		elseif dir:find("left") then
+			targetW = sW - delta.X
 		end
 
-		winOuter.Size = newSize
-		winOuter.Position = newPosition
+		if dir:find("bottom") then
+			targetH = sH + delta.Y
+		elseif dir:find("top") then
+			targetH = sH - delta.Y
+		end
+
+		local clampedW = math.max(MIN_SIZE.X, targetW)
+		local clampedH = math.max(MIN_SIZE.Y, targetH)
+		local actualDeltaW = clampedW - sW
+		local actualDeltaH = clampedH - sH
+
+		local posXDelta = 0
+		local posYDelta = 0
+
+		if dir:find("right") then
+			posXDelta = actualDeltaW * 0.5
+		elseif dir:find("left") then
+			posXDelta = -actualDeltaW * 0.5
+		end
+
+		if dir:find("bottom") then
+			posYDelta = actualDeltaH * 0.5
+		elseif dir:find("top") then
+			posYDelta = -actualDeltaH * 0.5
+		end
+
+		winOuter.Size = UDim2.fromOffset(clampedW, clampedH)
+		winOuter.Position = UDim2.new(
+			resizeData.startPos.X.Scale,
+			resizeData.startPos.X.Offset + posXDelta,
+			resizeData.startPos.Y.Scale,
+			resizeData.startPos.Y.Offset + posYDelta
+		)
+		winSize = winOuter.Size
 	end
 
 	local function endResize()
-		resizeData.resizing = false
-		resizeData.direction = nil
-		resizeData.startPos = nil
-		resizeData.startSize = nil
-		resizeData.startPosition = nil
+		if resizeData.resizing then
+			resizeData.resizing = false
+			resizeData.direction = nil
+			resizeData.startMouse = nil
+			resizeData.startSize = nil
+			resizeData.startPos = nil
+			winSize = winOuter.Size
+			pcall(function() UserInputService.MouseIcon = "" end)
+		end
 	end
 
 	-- Connect resize events
@@ -1730,27 +1779,27 @@ function Library:CreateWindow(cfg)
 		end
 	end))
 
-	-- Cursor handling - using standard cursors instead of images
+	-- Cursor handling - clean safe cursor setting
 	local resizeHandles = {
-		{handle = topResize, cursor = "UpArrow"},
-		{handle = bottomResize, cursor = "UpArrow"},
-		{handle = leftResize, cursor = "SizeWE"},
-		{handle = rightResize, cursor = "SizeWE"},
-		{handle = topLeftResize, cursor = "SizeNWSE"},
-		{handle = topRightResize, cursor = "SizeNESW"},
-		{handle = bottomLeftResize, cursor = "SizeNESW"},
-		{handle = bottomRightResize, cursor = "SizeNWSE"},
+		{handle = topResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png"},
+		{handle = bottomResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png"},
+		{handle = leftResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png"},
+		{handle = rightResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png"},
+		{handle = topLeftResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png"},
+		{handle = topRightResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png"},
+		{handle = bottomLeftResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png"},
+		{handle = bottomRightResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png"},
 	}
 
 	for _, data in ipairs(resizeHandles) do
 		data.handle.MouseEnter:Connect(function()
 			if not resizeData.resizing then
-				UserInputService.MouseIcon = data.cursor
+				pcall(function() UserInputService.MouseIcon = data.cursor end)
 			end
 		end)
 		data.handle.MouseLeave:Connect(function()
 			if not resizeData.resizing then
-				UserInputService.MouseIcon = ""
+				pcall(function() UserInputService.MouseIcon = "" end)
 			end
 		end)
 	end
@@ -2096,14 +2145,9 @@ function Library:CreateWindow(cfg)
 			
 			-- Enhanced tab transition with Exponential easing (juanitahaxx style)
 			for _, other in ipairs(Window.Tabs) do
-				if other.Page ~= tabPage and other.Page.Visible then
-					-- Fade out / slide up old tab
-					local tween = Util.Tween(other.Page, 0.2, { Position = UDim2.fromOffset(0, -8) }, Enum.EasingStyle.Exponential, Enum.EasingDirection.In)
-					tween.Completed:Wait()
+				if other.Page ~= tabPage then
 					other.Page.Visible = false
 					other.Page.Position = UDim2.fromOffset(0, 0)
-				else
-					other.Page.Visible = false
 				end
 
 				-- Pill collapses with spring-like Exponential
