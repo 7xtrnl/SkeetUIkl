@@ -1,7 +1,7 @@
 --[[
 	══════════════════════════════════════════════════════════════════════════════
-	  SKEETWARE UI v6.0 — LOCAL LOADER WITH ANIMATED LOGO
-	  • Loads UI library and settings manager from local files
+	  SKEETWARE UI v6.0 — GITHUB LOADER WITH ANIMATED LOGO
+	  • Loads UI library and settings manager from GitHub
 	  • Features animated logo from SkeetUIkl GitHub repository
 	  • Clean, practical script structure ready for customization
 	  • Configs + Themes fully integrated
@@ -16,9 +16,9 @@ local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 --══════════════════════════════════════════════════════════════════════════════
--- LOCAL LOADER WITH ANIMATED LOGO SUPPORT
-local Library = loadstring(readfile("ui.lua"))()
-local SettingsManager = loadstring(readfile("settingsmanager.luau"))()
+-- GITHUB LOADER WITH ANIMATED LOGO SUPPORT
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/refs/heads/main/skeet.luau"))()
+local SettingsManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/refs/heads/main/settingsmanager.luau"))()
 
 -- Expose globally
 if getgenv then
