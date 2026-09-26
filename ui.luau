@@ -1,6 +1,6 @@
 --[[
 	══════════════════════════════════════════════════════════════════════════════
-	  AXIOM UI v5.0 — Pixel-Perfect Hard Edge Skeet Design Engine
+	  SKEETWARE UI v5.0 — Pixel-Perfect Hard Edge Skeet Design Engine
 	  • Pure Authentic Skeet Styling (Clean Bevels, Razor-Sharp Borders, No Fake Glow)
 	  • 100% Native 2D Saturation/Value Palette & 7-Stop Hue Rainbow Bar
 	  • Fully Dynamic Live Theme System (Fonts, Accents, Backgrounds, Outlines)
@@ -40,18 +40,18 @@ local function getSafeGuiParent()
 	return LocalPlayer:WaitForChild("PlayerGui")
 end
 
-local oldGui = getSafeGuiParent():FindFirstChild("AxiomUI")
+local oldGui = getSafeGuiParent():FindFirstChild("SkeetwareUI")
 if oldGui then oldGui:Destroy() end
 
 -- Clean up old blur effects
 pcall(function()
 	local lighting = game:GetService("Lighting")
-	local oldBlur = lighting:FindFirstChild("AxiomBlur")
+	local oldBlur = lighting:FindFirstChild("SkeetwareBlur")
 	if oldBlur then oldBlur:Destroy() end
 end)
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "AxiomUI"
+screenGui.Name = "SkeetwareUI"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -62,7 +62,7 @@ local blurEffect = nil
 pcall(function()
 	local lighting = game:GetService("Lighting")
 	blurEffect = Instance.new("BlurEffect")
-	blurEffect.Name = "AxiomBlur"
+	blurEffect.Name = "SkeetwareBlur"
 	blurEffect.Size = 0
 	blurEffect.Parent = lighting
 end)
@@ -88,26 +88,6 @@ blurVignette.Transparency = NumberSequence.new({
 })
 blurVignette.Parent = blurOverlay
 
--- TahomaXP Custom Font (same as juanitahaxx Library)
-local TahomaFont = nil
-pcall(function()
-	if isfile and writefile and getcustomasset and HttpService then
-		local fontId = "juanitaaaaaaa/Assets/TahomaXP.ttf"
-		if not isfile(fontId) then
-			if not isfolder("juanitaaaaaaa") then makefolder("juanitaaaaaaa") end
-			if not isfolder("juanitaaaaaaa/Assets") then makefolder("juanitaaaaaaa/Assets") end
-			writefile(fontId, game:HttpGet("https://github.com/sametexe001/luas/raw/refs/heads/main/fonts/windows-xp-tahoma.ttf"))
-		end
-		local fontJson = HttpService:JSONEncode({
-			name = "TahomaXP",
-			faces = {{ name = "TahomaXP", weight = 400, style = "Regular", assetId = getcustomasset(fontId) }}
-		})
-		local fontFile = "juanitaaaaaaa/Assets/TahomaXP.font"
-		writefile(fontFile, fontJson)
-		TahomaFont = Font.new(getcustomasset(fontFile))
-	end
-end)
-
 local Library = {
 	Version   = "5.0.0",
 	Open      = true,
@@ -130,8 +110,8 @@ local Library = {
 	ParticleEffects = {},
 
 	Theme = {
-		Accent1       = Color3.fromRGB(138, 43, 226),  -- Purple Accent
-		Accent2       = Color3.fromRGB(186, 85, 211),  -- Light Purple
+		Accent1       = Color3.fromRGB(168, 219, 95),  -- Skeet Green
+		Accent2       = Color3.fromRGB(94, 158, 219),  -- Skeet Cyan
 		AccentDark    = Color3.fromRGB(105, 160, 50),
 		MainTop       = Color3.fromRGB(32, 32, 38),
 		MainBottom    = Color3.fromRGB(18, 18, 22),
@@ -147,17 +127,9 @@ local Library = {
 		TextDark      = Color3.fromRGB(105, 105, 120),
 		Risky         = Color3.fromRGB(245, 85, 85),
 		RiskyDark     = Color3.fromRGB(180, 50, 50),
-		Font          = TahomaFont or Enum.Font.GothamMedium,
-		FontBold      = TahomaFont or Enum.Font.GothamBold,
-		FontSize      = TahomaFont and 13 or 12,
-	},
-
-	-- Animation timings (inspired by juanitahaxx Library)
-	Animation = {
-		Tab       = { Time = 0.7,  Style = Enum.EasingStyle.Exponential, Dir = Enum.EasingDirection.Out },
-		Panel     = { Time = 0.3,  Style = Enum.EasingStyle.Quint,       Dir = Enum.EasingDirection.Out },
-		Notif     = { Time = 0.85, Style = Enum.EasingStyle.Exponential, Dir = Enum.EasingDirection.Out },
-		Hover     = { Time = 0.12, Style = Enum.EasingStyle.Quart,       Dir = Enum.EasingDirection.Out },
+		Font          = Enum.Font.GothamMedium,
+		FontBold      = Enum.Font.GothamBold,
+		FontSize      = 12,
 	},
 
 	Icons = {
@@ -166,7 +138,7 @@ local Library = {
 		Eye       = "rbxassetid://10723346959",
 		Users     = "rbxassetid://10747373426",
 		User      = "rbxassetid://10747373176",
-		Shield    = "rbxassetid://140699768238308",
+		Shield    = "rbxassetid://10734951847",
 		Sliders   = "rbxassetid://10734963400",
 		Settings  = "rbxassetid://10734950309",
 		Palette   = "rbxassetid://10734910430",
@@ -197,46 +169,11 @@ local Util = {}
 
 function Util.Create(class, props, children)
 	local inst = Instance.new(class)
-	local isTextClass = (class == "TextLabel" or class == "TextButton" or class == "TextBox")
-	local hasCustomFont = (typeof(TahomaFont) == "Font")
-	local fontWasSet = false
-
 	for k, v in pairs(props or {}) do
-		if k ~= "Parent" then
-			-- Redirect deprecated "Font" key → "FontFace" when using a custom Font object
-			if k == "Font" and hasCustomFont then
-				inst.FontFace = TahomaFont
-				fontWasSet = true
-			else
-				inst[k] = v
-			end
-		end
+		if k ~= "Parent" then inst[k] = v end
 	end
-
 	for _, child in ipairs(children or {}) do child.Parent = inst end
 	if props and props.Parent then inst.Parent = props.Parent end
-
-	-- Auto-apply TahomaXP custom font + gradient for ALL text elements
-	if isTextClass then
-		if hasCustomFont and not fontWasSet then
-			inst.FontFace = TahomaFont
-		end
-		-- Default text size when using the custom font
-		if not (props and props.TextSize) then
-			inst.TextSize = 12
-		end
-		-- Subtle white-to-gray gradient for polished text appearance
-		if class ~= "TextBox" then
-			local grad = Instance.new("UIGradient")
-			grad.Rotation = 90
-			grad.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(163, 163, 163))
-			})
-			grad.Parent = inst
-		end
-	end
-
 	return inst
 end
 local New = Util.Create
@@ -320,58 +257,9 @@ function Util.CreateHardBorder(parent, size, pos, bgTop, bgBottom, isMainWin)
 	return outer, inner
 end
 
--- Animated rainbow color sequence that cycles hue over time
-local function buildRainbowColorSequence(offset)
-	offset = offset or 0
-	local stops = {
-		{ 0.00, Color3.fromHSV((0.00 + offset) % 1, 0.85, 1.0) },
-		{ 0.17, Color3.fromHSV((0.17 + offset) % 1, 0.85, 1.0) },
-		{ 0.34, Color3.fromHSV((0.34 + offset) % 1, 0.85, 1.0) },
-		{ 0.50, Color3.fromHSV((0.50 + offset) % 1, 0.85, 1.0) },
-		{ 0.67, Color3.fromHSV((0.67 + offset) % 1, 0.85, 1.0) },
-		{ 0.84, Color3.fromHSV((0.84 + offset) % 1, 0.85, 1.0) },
-		{ 1.00, Color3.fromHSV((1.00 + offset) % 1, 0.85, 1.0) },
-	}
-	local kps = {}
-	for _, s in ipairs(stops) do
-		table.insert(kps, ColorSequenceKeypoint.new(s[1], s[2]))
-	end
-	return ColorSequence.new(kps)
-end
-
 function Util.AddSkeetGradientBar(parent, height)
-	local h = height or 2
-
-	-- Glow base frame (wider, blurred effect behind the bar)
-	local glowBase = New("Frame", {
-		Size = UDim2.new(1, 0, 0, h + 6),
-		Position = UDim2.fromOffset(0, -3),
-		BackgroundColor3 = Color3.fromRGB(140, 100, 255),
-		BackgroundTransparency = 0.55,
-		BorderSizePixel = 0,
-		ZIndex = 9,
-		ClipsDescendants = false,
-		Parent = parent,
-	})
-	New("UICorner", { CornerRadius = UDim.new(0, h + 3), Parent = glowBase })
-	local glowGrad = New("UIGradient", {
-		Rotation = 0,
-		Color = buildRainbowColorSequence(0),
-		Parent = glowBase,
-	})
-	New("UIGradient", {
-		Rotation = 0,
-		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.7),
-			NumberSequenceKeypoint.new(0.5, 0.45),
-			NumberSequenceKeypoint.new(1, 0.7),
-		}),
-		Parent = glowBase,
-	})
-
-	-- The actual sharp rainbow bar on top
 	local bar = New("Frame", {
-		Size = UDim2.new(1, 0, 0, h),
+		Size = UDim2.new(1, 0, 0, height or 2),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 		BorderSizePixel = 0,
@@ -379,41 +267,29 @@ function Util.AddSkeetGradientBar(parent, height)
 		ClipsDescendants = false,
 		Parent = parent,
 	})
-	New("UICorner", { CornerRadius = UDim.new(0, h), Parent = bar })
+	New("UICorner", { CornerRadius = UDim.new(0, height or 2), Parent = bar })
 
 	local grad = New("UIGradient", {
 		Rotation = 0,
-		Color = buildRainbowColorSequence(0),
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0.00, Color3.fromRGB(54, 163, 247)),
+			ColorSequenceKeypoint.new(0.20, Color3.fromRGB(98, 216, 247)),
+			ColorSequenceKeypoint.new(0.40, Color3.fromRGB(168, 219, 95)),
+			ColorSequenceKeypoint.new(0.60, Color3.fromRGB(247, 184, 92)),
+			ColorSequenceKeypoint.new(0.80, Color3.fromRGB(247, 104, 181)),
+			ColorSequenceKeypoint.new(1.00, Color3.fromRGB(184, 119, 247)),
+		}),
 		Parent = bar,
 	})
 	New("UIGradient", {
 		Rotation = 0,
 		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.2),
+			NumberSequenceKeypoint.new(0, 0.3),
 			NumberSequenceKeypoint.new(0.5, 0),
-			NumberSequenceKeypoint.new(1, 0.2),
+			NumberSequenceKeypoint.new(1, 0.3),
 		}),
 		Parent = bar,
 	})
-
-	-- Animate the rainbow: shift hue offset over time
-	local rainbowOffset = 0
-	local glowPulse = 0
-	table.insert(Library.Connections, RunService.RenderStepped:Connect(function(dt)
-		if Library.Unloaded then return end
-		if not bar.Parent then return end
-
-		-- Move rainbow hue
-		rainbowOffset = (rainbowOffset + dt * 0.12) % 1
-		local seq = buildRainbowColorSequence(rainbowOffset)
-		grad.Color = seq
-		glowGrad.Color = seq
-
-		-- Pulse the glow transparency
-		glowPulse = glowPulse + dt * 1.8
-		local pulse = 0.5 + math.sin(glowPulse) * 0.12
-		glowBase.BackgroundTransparency = math.clamp(pulse, 0.38, 0.72)
-	end))
 
 	return bar
 end
@@ -621,7 +497,7 @@ local function initSnow()
 	if snowLayer then return end
 
 	snowLayer = New("Frame", {
-		Name = "AxiomSnow",
+		Name = "SkeetwareSnow",
 		Size = UDim2.fromScale(1, 1),
 		Position = UDim2.fromScale(0, 0),
 		BackgroundTransparency = 1,
@@ -684,7 +560,7 @@ initSnow()
 -- WATERMARK HUD
 --============================================================================--
 function Library:CreateWatermark(customTitle)
-	local title = customTitle or "axiom.cc"
+	local title = customTitle or "skeetware.cc"
 	local wmOuter, wmInner = Util.CreateHardBorder(screenGui, UDim2.fromOffset(300, 24), UDim2.fromOffset(20, 20), Library.Theme.MainTop, Library.Theme.MainBottom, true)
 	wmOuter.ZIndex = 50
 	Util.AddSkeetGradientBar(wmInner, 2)
@@ -966,12 +842,12 @@ function Library:Notify(cfg)
 		Util.RegisterTheme(timerBar, "BackgroundColor3", "AccentColor")
 	end
 
-	-- Slide-in animation (Exponential like juanitahaxx notif: 0.85s Exponential Out)
-	Util.Tween(notifOuter, Library.Animation.Notif.Time, { Position = UDim2.fromOffset(0, 0) }, Library.Animation.Notif.Style, Library.Animation.Notif.Dir)
+	-- Slide-in animation
+	Util.Tween(notifOuter, 0.22, { Position = UDim2.fromOffset(0, 0) }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 	Util.Tween(timerBar, dur, { Size = UDim2.new(0, 0, 0, 2) }, Enum.EasingStyle.Linear)
 
 	task.delay(dur, function()
-		local out = Util.Tween(notifOuter, 0.35, { Position = UDim2.fromOffset(130, 0) }, Enum.EasingStyle.Exponential, Enum.EasingDirection.In)
+		local out = Util.Tween(notifOuter, 0.2, { Position = UDim2.fromOffset(120, 0) }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 		out.Completed:Connect(function() notifOuter:Destroy() end)
 	end)
 end
@@ -981,7 +857,7 @@ end
 --============================================================================--
 function Library:CreateWindow(cfg)
 	cfg = cfg or {}
-	local title   = cfg.Title or "axiom.cc"
+	local title   = cfg.Title or "skeetware.cc"
 	local winSize = cfg.Size or UDim2.fromOffset(720, 520)
 
 	local winOuter, winInner = Util.CreateHardBorder(screenGui, winSize, UDim2.fromScale(0.5, 0.5), Library.Theme.MainTop, Library.Theme.MainBottom, true)
@@ -1115,8 +991,8 @@ function Library:CreateWindow(cfg)
 	})
 
 	local brandIcon = New("ImageLabel", {
-		Size = UDim2.fromOffset(38, 38),
-		Position = UDim2.fromOffset(10, 11),
+		Size = UDim2.fromOffset(32, 32),
+		Position = UDim2.fromOffset(14, 14),
 		BackgroundTransparency = 1,
 		Image = Library.Icons.Shield,
 		ImageColor3 = Library.Theme.Accent1,
@@ -1126,8 +1002,8 @@ function Library:CreateWindow(cfg)
 	Util.RegisterTheme(brandIcon, "ImageColor3", "AccentColor")
 
 	New("TextLabel", {
-		Size = UDim2.new(1, -58, 0, 20),
-		Position = UDim2.fromOffset(54, 15),
+		Size = UDim2.new(1, -56, 0, 20),
+		Position = UDim2.fromOffset(52, 20),
 		BackgroundTransparency = 1,
 		Font = Library.Theme.FontBold,
 		TextSize = Library.Theme.FontSize + 2,
@@ -1139,8 +1015,8 @@ function Library:CreateWindow(cfg)
 	})
 
 	New("TextLabel", {
-		Size = UDim2.new(1, -58, 0, 16),
-		Position = UDim2.fromOffset(54, 34),
+		Size = UDim2.new(1, -56, 0, 16),
+		Position = UDim2.fromOffset(52, 40),
 		BackgroundTransparency = 1,
 		Font = Library.Theme.Font,
 		TextSize = Library.Theme.FontSize - 1,
@@ -1209,7 +1085,7 @@ function Library:CreateWindow(cfg)
 		Font = Library.Theme.Font,
 		TextSize = Library.Theme.FontSize - 1,
 		TextColor3 = Library.Theme.Text,
-		PlaceholderText = "Search...",`r`n`t`tText = "",
+		PlaceholderText = "Search...",
 		PlaceholderColor3 = Library.Theme.TextDark,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ClearTextOnFocus = false,
@@ -1298,7 +1174,7 @@ function Library:CreateWindow(cfg)
 				winOuter.Visible = true
 				winScale.Scale = 0.94
 				winOuter.Size = winSize
-				Util.Tween(winScale, 0.22, { Scale = 1 }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+				Util.Tween(winScale, 0.2, { Scale = 1 }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 				Util.PlaySound("open")
 			else
 				-- Hide blur overlay
@@ -1307,7 +1183,7 @@ function Library:CreateWindow(cfg)
 					Util.Tween(blurEffect, 0.25, { Size = 0 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 				end
 
-				local t = Util.Tween(winScale, 0.16, { Scale = 0.94 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+				local t = Util.Tween(winScale, 0.15, { Scale = 0.94 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 				t.Completed:Connect(function()
 					winOuter.Visible = false
 					winScale.Scale = 1
@@ -1427,7 +1303,7 @@ function Library:CreateWindow(cfg)
 		TextSize = Library.Theme.FontSize - 2,
 		TextColor3 = Library.Theme.TextDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = string.format("axiom | %s", LocalPlayer and LocalPlayer.DisplayName or "User"),
+		Text = string.format("skeetware | %s", LocalPlayer and LocalPlayer.DisplayName or "User"),
 		ZIndex = 11,
 		Parent = footerBar,
 	})
@@ -1458,10 +1334,11 @@ function Library:CreateWindow(cfg)
 		end
 	end)
 
-	-- Improved resize bars for window resizing - cleaner and more responsive
+
+	-- Smooth, rock-solid window resizing handles (Edges + Corners)
 	local RESIZE_SIZE = 8
 	local CORNER_SIZE = 16
-	local MIN_SIZE = Vector2.new(450, 320)
+	local MIN_SIZE = Vector2.new(480, 340)
 	local resizeData = {
 		resizing = false,
 		direction = nil,
@@ -1470,36 +1347,12 @@ function Library:CreateWindow(cfg)
 		startPos = nil,
 	}
 
-	-- Visual corner grip indicator in the bottom-right corner for high-end aesthetic
-	local gripFrame = New("Frame", {
-		Size = UDim2.fromOffset(14, 14),
-		Position = UDim2.new(1, -15, 1, -15),
-		BackgroundTransparency = 1,
-		ZIndex = 25,
-		Parent = winInner,
-	})
-
-	for i = 1, 3 do
-		local notch = New("Frame", {
-			Size = UDim2.fromOffset(i * 3 + 1, 1),
-			Position = UDim2.new(1, - (i * 3 + 2), 1, - (4 - i) * 3 - 2),
-			BackgroundColor3 = Library.Theme.TextDim,
-			BackgroundTransparency = 0.6,
-			BorderSizePixel = 0,
-			ZIndex = 26,
-			Parent = gripFrame,
-		})
-		Util.RegisterTheme(notch, "BackgroundColor3", "FontColor")
-	end
-
-	-- Create resize handles
 	local function createResizeHandle(size, position, parent, zIndex)
 		return New("TextButton", {
 			Size = size,
 			Position = position,
 			BackgroundTransparency = 1,
 			Text = "",
-			AutoButtonColor = false,
 			ZIndex = zIndex,
 			Parent = parent,
 		})
@@ -1509,13 +1362,40 @@ function Library:CreateWindow(cfg)
 	local topResize = createResizeHandle(UDim2.new(1, -CORNER_SIZE * 2, 0, RESIZE_SIZE), UDim2.fromOffset(CORNER_SIZE, 0), winOuter, 100)
 	local bottomResize = createResizeHandle(UDim2.new(1, -CORNER_SIZE * 2, 0, RESIZE_SIZE), UDim2.new(0, CORNER_SIZE, 1, -RESIZE_SIZE), winOuter, 100)
 	local leftResize = createResizeHandle(UDim2.new(0, RESIZE_SIZE, 1, -CORNER_SIZE * 2), UDim2.fromOffset(0, CORNER_SIZE), winOuter, 100)
-	rightResize = createResizeHandle(UDim2.new(0, RESIZE_SIZE, 1, -CORNER_SIZE * 2), UDim2.new(1, -RESIZE_SIZE, 0, CORNER_SIZE), winOuter, 100)
+	local rightResize = createResizeHandle(UDim2.new(0, RESIZE_SIZE, 1, -CORNER_SIZE * 2), UDim2.new(1, -RESIZE_SIZE, 0, CORNER_SIZE), winOuter, 100)
 
 	-- Corner resize handles
 	local topLeftResize = createResizeHandle(UDim2.fromOffset(CORNER_SIZE, CORNER_SIZE), UDim2.fromOffset(0, 0), winOuter, 101)
 	local topRightResize = createResizeHandle(UDim2.fromOffset(CORNER_SIZE, CORNER_SIZE), UDim2.new(1, -CORNER_SIZE, 0, 0), winOuter, 101)
 	local bottomLeftResize = createResizeHandle(UDim2.fromOffset(CORNER_SIZE, CORNER_SIZE), UDim2.new(0, 0, 1, -CORNER_SIZE), winOuter, 101)
 	local bottomRightResize = createResizeHandle(UDim2.fromOffset(CORNER_SIZE, CORNER_SIZE), UDim2.new(1, -CORNER_SIZE, 1, -CORNER_SIZE), winOuter, 101)
+
+	-- Visual corner grip indicator in bottom-right corner
+	local gripFrame = New("Frame", {
+		Size = UDim2.fromOffset(12, 12),
+		Position = UDim2.new(1, -14, 1, -14),
+		BackgroundTransparency = 1,
+		ZIndex = 25,
+		Parent = winInner,
+	})
+	local gripLine1 = New("Frame", {
+		Size = UDim2.new(0, 8, 0, 1),
+		Position = UDim2.fromOffset(4, 10),
+		BackgroundColor3 = Library.Theme.TextDark,
+		BorderSizePixel = 0,
+		ZIndex = 26,
+		Parent = gripFrame,
+	})
+	local gripLine2 = New("Frame", {
+		Size = UDim2.new(0, 4, 0, 1),
+		Position = UDim2.fromOffset(8, 6),
+		BackgroundColor3 = Library.Theme.TextDark,
+		BorderSizePixel = 0,
+		ZIndex = 26,
+		Parent = gripFrame,
+	})
+	Util.RegisterTheme(gripLine1, "BackgroundColor3", "OutlineColor")
+	Util.RegisterTheme(gripLine2, "BackgroundColor3", "OutlineColor")
 
 	local function startResize(direction)
 		resizeData.resizing = true
@@ -1614,14 +1494,14 @@ function Library:CreateWindow(cfg)
 	end))
 
 	local resizeHandles = {
-		{handle = topResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png"},
-		{handle = bottomResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png"},
-		{handle = leftResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png"},
-		{handle = rightResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png"},
-		{handle = topLeftResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png"},
-		{handle = topRightResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png"},
-		{handle = bottomLeftResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png"},
-		{handle = bottomRightResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png"},
+		{ handle = topResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png" },
+		{ handle = bottomResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png" },
+		{ handle = leftResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png" },
+		{ handle = rightResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png" },
+		{ handle = topLeftResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png" },
+		{ handle = topRightResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png" },
+		{ handle = bottomLeftResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png" },
+		{ handle = bottomRightResize, cursor = "rbxasset://textures/StudioToolbox/Scale.png" },
 	}
 
 	for _, data in ipairs(resizeHandles) do
@@ -1932,32 +1812,28 @@ function Library:CreateWindow(cfg)
 				Library:SetThemeColor(k, col)
 			end
 			
-			-- Enhanced tab transition with Exponential easing (juanitahaxx style)
+			-- Hide every other tab page immediately (no blocking :Wait()).
+			-- A blocking tween inside a UI input callback deadlocks/errors
+			-- and is what broke tab switching.
 			for _, other in ipairs(Window.Tabs) do
-				if other.Page ~= tabPage then
-					other.Page.Visible = false
-					other.Page.Position = UDim2.fromOffset(0, 0)
-				end
-
-				-- Pill collapses with spring-like Exponential
-				Util.Tween(other.Pill, Library.Animation.Tab.Time, { Size = UDim2.new(0, 2, 0, 0) }, Library.Animation.Tab.Style, Library.Animation.Tab.Dir)
-				Util.Tween(other.Label, 0.25, { TextColor3 = Library.Theme.TextDim }, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
-				if other.Icon then Util.Tween(other.Icon, 0.25, { ImageColor3 = Library.Theme.TextDim }, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out) end
-				Util.Tween(other.Inner, 0.25, { BackgroundColor3 = Library.Theme.ControlTop }, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+				other.Page.Visible = false
+				Util.Tween(other.Pill, 0.12, { Size = UDim2.new(0, 3, 0, 0) })
+				Util.Tween(other.Label, 0.15, { TextColor3 = Library.Theme.TextDim })
+				if other.Icon then Util.Tween(other.Icon, 0.15, { ImageColor3 = Library.Theme.TextDim }) end
+				Util.Tween(other.Inner, 0.15, { BackgroundColor3 = Library.Theme.ControlTop })
 			end
-
-			-- Slide in new tab from below with Exponential
-			tabPage.Position = UDim2.fromOffset(0, 14)
+			
+			-- Slide in new tab
+			tabPage.Position = UDim2.fromOffset(0, 10)
 			tabPage.Visible = true
-			Util.Tween(tabPage, Library.Animation.Tab.Time, {
+			Util.Tween(tabPage, 0.2, { 
 				Position = UDim2.fromOffset(0, 0)
-			}, Library.Animation.Tab.Style, Library.Animation.Tab.Dir)
-
-			-- Pill expands like a spring
-			Util.Tween(activePill, Library.Animation.Tab.Time, { Size = UDim2.new(0, 3, 0.7, 0) }, Library.Animation.Tab.Style, Library.Animation.Tab.Dir)
-			Util.Tween(tabLabel, 0.4, { TextColor3 = Library.Theme.Text }, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
-			if tabIcon then Util.Tween(tabIcon, 0.4, { ImageColor3 = Library.Theme.Accent1 }, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out) end
-			Util.Tween(tabBtnInner, 0.4, { BackgroundColor3 = Library.Theme.GroupTop }, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+			}, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+			
+			Util.Tween(activePill, 0.18, { Size = UDim2.new(0, 3, 0.65, 0) }, Enum.EasingStyle.Quart)
+			Util.Tween(tabLabel, 0.18, { TextColor3 = Library.Theme.Text })
+			if tabIcon then Util.Tween(tabIcon, 0.18, { ImageColor3 = Library.Theme.Accent1 }) end
+			Util.Tween(tabBtnInner, 0.18, { BackgroundColor3 = Library.Theme.GroupTop })
 		end
 
 		tabBtnInner.InputBegan:Connect(function(input)
@@ -1970,14 +1846,12 @@ function Library:CreateWindow(cfg)
 		tabBtnInner.MouseEnter:Connect(function()
 			Util.PlaySound("hover")
 			if not tabPage.Visible then
-				Util.Tween(tabBtnInner, Library.Animation.Hover.Time, { BackgroundColor3 = Library.Theme.ControlHover }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
-				Util.Tween(tabLabel, Library.Animation.Hover.Time, { TextColor3 = Library.Theme.TextDim:lerp(Library.Theme.Text, 0.5) }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
+				Util.Tween(tabBtnInner, 0.1, { BackgroundColor3 = Library.Theme.ControlHover })
 			end
 		end)
 		tabBtnInner.MouseLeave:Connect(function()
 			if not tabPage.Visible then
-				Util.Tween(tabBtnInner, Library.Animation.Hover.Time, { BackgroundColor3 = Library.Theme.ControlTop }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
-				Util.Tween(tabLabel, Library.Animation.Hover.Time, { TextColor3 = Library.Theme.TextDim }, Library.Animation.Hover.Style, Library.Animation.Hover.Dir)
+				Util.Tween(tabBtnInner, 0.1, { BackgroundColor3 = Library.Theme.ControlTop })
 			end
 		end)
 
@@ -3500,6 +3374,17 @@ end
 function Library:SetThemeColor(colorType, newColor)
 	if not colorType or not newColor then return end
 
+function Library:SetFontSize(size)
+	self.Theme.FontSize = size
+	if self.Registry["FontSize"] then
+		for _, reg in ipairs(self.Registry["FontSize"]) do
+			pcall(function()
+				reg.Instance[reg.Property] = size
+			end)
+		end
+	end
+end
+
 	-- Keep a global snapshot of the 5 public theme keys so we can re-apply
 	-- on tab switches without needing to track each window separately
 	if colorType == "AccentColor" or colorType == "Accent1" then
@@ -3610,10 +3495,9 @@ function Library:Unload()
 			screenGui:Destroy()
 		end)
 	end
-print(("[Axiom] build %s loaded | searchbar = 'Search...' | %d registered theme keys"):format(
-	Library.Build or "?", (function() local n = 0 for _ in pairs(Library.ThemeSignals) do n = n + 1 end return n end)()))
-
-return Library
 end
+
+print(("[Skeetware] build %s loaded | searchbar = 'Search...' | %d registered theme keys"):format(
+	Library.Build or "?", (function() local n = 0 for _ in pairs(Library.ThemeSignals) do n = n + 1 end return n end)()))
 
 return Library
