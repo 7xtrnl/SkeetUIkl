@@ -52,6 +52,18 @@ local function safeDeleteFile(path)
 	end
 end
 
+local function safeSetClipboard(str)
+	if typeof(setclipboard) == "function" then
+		local ok = pcall(setclipboard, str)
+		if ok then return true end
+	end
+	if typeof(toclipboard) == "function" then
+		local ok = pcall(toclipboard, str)
+		if ok then return true end
+	end
+	return false
+end
+
 local function safeListFiles(folder)
 	local files = {}
 	if typeof(listfiles) == "function" then
