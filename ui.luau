@@ -20,8 +20,71 @@ local RunService       = game:GetService("RunService")
 local Players          = game:GetService("Players")
 local CoreGui          = game:GetService("CoreGui")
 local SoundService     = game:GetService("SoundService")
+local HttpService      = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
+
+--============================================================================--
+-- TAHOMA XP CUSTOM FONT LOADER
+--============================================================================--
+local SkeetDir = "SkeetwareUI"
+local SkeetAssets = SkeetDir .. "/Assets"
+
+pcall(function()
+	if typeof(isfolder) == "function" and typeof(makefolder) == "function" then
+		if not isfolder(SkeetDir) then makefolder(SkeetDir) end
+		if not isfolder(SkeetAssets) then makefolder(SkeetAssets) end
+	end
+end)
+
+local TahomaFont = nil
+pcall(function()
+	local getAsset = getcustomasset or getsynasset
+	if typeof(isfile) == "function" and typeof(writefile) == "function" and getAsset then
+		local ttfPath = SkeetAssets .. "/TahomaXP.ttf"
+		if not isfile(ttfPath) then
+			writefile(ttfPath, game:HttpGet("https://github.com/sametexe001/luas/raw/refs/heads/main/fonts/windows-xp-tahoma.ttf"))
+		end
+
+		local fontData = {
+			name = "TahomaXP",
+			faces = {
+				{
+					name = "TahomaXP",
+					weight = 400,
+					style = "Regular",
+					assetId = getAsset(ttfPath)
+				}
+			}
+		}
+
+		local fontPath = SkeetAssets .. "/TahomaXP.font"
+		writefile(fontPath, HttpService:JSONEncode(fontData))
+		TahomaFont = Font.new(getAsset(fontPath))
+	end
+end)
+
+--============================================================================--
+-- ANIMATED GIF BRANDING LOADER (new.gif)
+--============================================================================--
+local BrandGifFrames = {}
+local BrandGifLoaded = false
+
+pcall(function()
+	local getAsset = getcustomasset or getsynasset
+	if typeof(isfile) == "function" and typeof(writefile) == "function" and getAsset then
+		local gifPath = SkeetAssets .. "/brand.gif"
+		if not isfile(gifPath) then
+			writefile(gifPath, game:HttpGet("https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/main/new.gif"))
+		end
+		-- Some executors support GIF directly via getcustomasset
+		local assetUri = getAsset(gifPath)
+		if assetUri then
+			BrandGifFrames = { assetUri }
+			BrandGifLoaded = true
+		end
+	end
+end)
 
 local function getSafeGuiParent()
 	local ok, res = pcall(function()
@@ -131,6 +194,7 @@ local Library = {
 		Font          = Enum.Font.GothamMedium,
 		FontBold      = Enum.Font.GothamBold,
 		FontSize      = 12,
+		GlowEnabled   = true,
 	},
 
 	Icons = {
@@ -170,17 +234,39 @@ local Util = {}
 
 function Util.Create(class, props, children)
 	local inst = Instance.new(class)
+	local isTextClass = (class == "TextLabel" or class == "TextButton" or class == "TextBox")
 	for k, v in pairs(props or {}) do
 		if k ~= "Parent" then inst[k] = v end
 	end
 	for _, child in ipairs(children or {}) do child.Parent = inst end
 	if props and props.Parent then inst.Parent = props.Parent end
-	if (class == "TextLabel" or class == "TextButton" or class == "TextBox") and Library.TextSizeRegistry then
-		local baseSize = (props and props.TextSize) or inst.TextSize or (Library.Theme and Library.Theme.FontSize) or 12
-		table.insert(Library.TextSizeRegistry, {
-			Instance = inst,
-			Delta = baseSize - ((Library.Theme and Library.Theme.FontSize) or 12),
-		})
+	-- Apply TahomaXP custom font to all text elements
+	if isTextClass then
+		if TahomaFont and not (props and props.FontFace) then
+			pcall(function() inst.FontFace = TahomaFont end)
+		end
+		-- Force size 12 for clean pixel-perfect look
+		if not (props and props.TextSize) then
+			inst.TextSize = 12
+		end
+		-- Register for live font-size scaling
+		if Library.TextSizeRegistry then
+			local baseSize = inst.TextSize or 12
+			table.insert(Library.TextSizeRegistry, {
+				Instance = inst,
+				Delta = baseSize - ((Library.Theme and Library.Theme.FontSize) or 12),
+			})
+		end
+		-- Subtle white-to-gray text gradient for polished look
+		if class ~= "TextBox" then
+			local grad = Instance.new("UIGradient")
+			grad.Rotation = 90
+			grad.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(190, 190, 190))
+			})
+			grad.Parent = inst
+		end
 	end
 	return inst
 end
@@ -215,6 +301,19 @@ function Util.Tween(inst, dur, props, style, dir)
 	return t
 end
 
+-- Utility: add accent glow (UIStroke) to a frame
+function Util.AddGlow(inst, color, thickness, transparency)
+	if not Library.Theme.GlowEnabled then return nil end
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = color or Library.Theme.Accent1
+	stroke.Thickness = thickness or 1
+	stroke.Transparency = transparency or 0.7
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = inst
+	Util.RegisterTheme(stroke, "Color", "AccentColor")
+	return stroke
+end
+
 function Util.CreateHardBorder(parent, size, pos, bgTop, bgBottom, isMainWin)
 	local outer = New("Frame", {
 		Size = size or UDim2.fromScale(1, 1),
@@ -245,8 +344,12 @@ function Util.CreateHardBorder(parent, size, pos, bgTop, bgBottom, isMainWin)
 
 	if isMainWin then
 		Util.RegisterTheme(inner, "BackgroundColor3", "BackgroundColor")
+		-- Main window gets a strong accent glow
+		Util.AddGlow(outer, Library.Theme.Accent1, 1.5, 0.55)
 	else
 		Util.RegisterTheme(inner, "BackgroundColor3", "MainColor")
+		-- Groupboxes/controls get a subtle glow
+		Util.AddGlow(outer, Library.Theme.Accent1, 1, 0.82)
 	end
 
 	-- Subtle dark shading gradient that scales with dynamic theme colors
@@ -989,7 +1092,7 @@ function Library:CreateWindow(cfg)
 		Parent = sidebarEdge,
 	})
 
-	-- Branding section
+	-- Branding section with animated GIF logo
 	local brandingSection = New("Frame", {
 		Size = UDim2.new(1, 0, 0, 60),
 		Position = UDim2.fromOffset(0, 0),
@@ -999,22 +1102,35 @@ function Library:CreateWindow(cfg)
 	})
 
 	local brandIcon = New("ImageLabel", {
-		Size = UDim2.fromOffset(32, 32),
-		Position = UDim2.fromOffset(14, 14),
+		Size = UDim2.fromOffset(36, 36),
+		Position = UDim2.fromOffset(12, 12),
 		BackgroundTransparency = 1,
-		Image = Library.Icons.Shield,
-		ImageColor3 = Library.Theme.Accent1,
+		Image = (BrandGifLoaded and BrandGifFrames[1]) or Library.Icons.Shield,
+		ImageColor3 = BrandGifLoaded and Color3.fromRGB(255, 255, 255) or Library.Theme.Accent1,
+		ScaleType = Enum.ScaleType.Fit,
 		ZIndex = 12,
 		Parent = brandingSection,
 	})
-	Util.RegisterTheme(brandIcon, "ImageColor3", "AccentColor")
+	if not BrandGifLoaded then
+		Util.RegisterTheme(brandIcon, "ImageColor3", "AccentColor")
+	end
+	-- Accent glow ring around brand icon
+	local brandGlow = New("Frame", {
+		Size = UDim2.fromOffset(40, 40),
+		Position = UDim2.fromOffset(10, 10),
+		BackgroundTransparency = 1,
+		ZIndex = 11,
+		Parent = brandingSection,
+	})
+	New("UICorner", { CornerRadius = UDim.new(0, 6), Parent = brandGlow })
+	Util.AddGlow(brandGlow, Library.Theme.Accent1, 1.5, 0.45)
 
 	New("TextLabel", {
 		Size = UDim2.new(1, -56, 0, 20),
-		Position = UDim2.fromOffset(52, 20),
+		Position = UDim2.fromOffset(54, 14),
 		BackgroundTransparency = 1,
 		Font = Library.Theme.FontBold,
-		TextSize = Library.Theme.FontSize + 2,
+		TextSize = 12,
 		TextColor3 = Library.Theme.Text,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Text = "SKEET",
@@ -1024,10 +1140,10 @@ function Library:CreateWindow(cfg)
 
 	New("TextLabel", {
 		Size = UDim2.new(1, -56, 0, 16),
-		Position = UDim2.fromOffset(52, 40),
+		Position = UDim2.fromOffset(54, 34),
 		BackgroundTransparency = 1,
 		Font = Library.Theme.Font,
-		TextSize = Library.Theme.FontSize - 1,
+		TextSize = 12,
 		TextColor3 = Library.Theme.TextDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Text = "WARE.CC",
