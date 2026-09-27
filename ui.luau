@@ -95,6 +95,7 @@ local Library = {
 	Flags     = {},
 	Registry  = {},
 	FlagRegistry = {},
+	TextSizeRegistry = {},
 	ThemeSignals = {},
 	KeybindList = nil,
 	Watermark   = nil,
@@ -174,6 +175,13 @@ function Util.Create(class, props, children)
 	end
 	for _, child in ipairs(children or {}) do child.Parent = inst end
 	if props and props.Parent then inst.Parent = props.Parent end
+	if (class == "TextLabel" or class == "TextButton" or class == "TextBox") and Library.TextSizeRegistry then
+		local baseSize = (props and props.TextSize) or inst.TextSize or (Library.Theme and Library.Theme.FontSize) or 12
+		table.insert(Library.TextSizeRegistry, {
+			Instance = inst,
+			Delta = baseSize - ((Library.Theme and Library.Theme.FontSize) or 12),
+		})
+	end
 	return inst
 end
 local New = Util.Create
@@ -1669,6 +1677,75 @@ function Library:CreateWindow(cfg)
 					Parent = subBar,
 				})
 				self.SubTabBar = subBar
+
+				local hasExistingControls = (#leftCol:GetChildren() > 2) or (#rightCol:GetChildren() > 2)
+				if hasExistingControls then
+					local mainBtnOuter, mainBtnInner = Util.CreateHardBorder(self.SubTabBar, UDim2.fromOffset(80, 22), nil, Library.Theme.ControlTop, Library.Theme.ControlBottom)
+					local mainLine = New("Frame", {
+						Size = UDim2.new(1, 0, 0, 2),
+						Position = UDim2.new(0, 0, 1, -2),
+						BackgroundColor3 = Library.Theme.Accent1,
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						ZIndex = 14,
+						Parent = mainBtnInner,
+					})
+					Util.RegisterTheme(mainLine, "BackgroundColor3", "AccentColor")
+
+					local mainLabel = New("TextLabel", {
+						Size = UDim2.fromScale(1, 1),
+						BackgroundTransparency = 1,
+						Font = Library.Theme.FontBold,
+						TextSize = Library.Theme.FontSize - 1,
+						TextColor3 = Library.Theme.TextDim,
+						Text = "MAIN",
+						ZIndex = 13,
+						Parent = mainBtnInner,
+					})
+
+					local RootSubTab = {
+						Btn = mainBtnOuter,
+						Inner = mainBtnInner,
+						Label = mainLabel,
+						Line = mainLine,
+						Left = leftCol,
+						Right = rightCol,
+					}
+
+					local function selectRootSubTab()
+						for _, other in ipairs(self.SubTabs) do
+							other.Left.Visible = false
+							other.Right.Visible = false
+							Util.Tween(other.Label, 0.12, { TextColor3 = Library.Theme.TextDim })
+							Util.Tween(other.Line, 0.12, { BackgroundTransparency = 1 })
+							Util.Tween(other.Inner, 0.12, { BackgroundColor3 = Library.Theme.ControlTop })
+						end
+						RootSubTab.Left.Position = UDim2.fromOffset(0, 32)
+						RootSubTab.Right.Position = UDim2.new(0.5, 6, 0, 32)
+						RootSubTab.Left.Visible = true
+						RootSubTab.Right.Visible = true
+						Util.Tween(mainLabel, 0.14, { TextColor3 = Library.Theme.Accent1 })
+						Util.Tween(mainLine, 0.14, { BackgroundTransparency = 0 })
+						Util.Tween(mainBtnInner, 0.14, { BackgroundColor3 = Library.Theme.GroupTop })
+						Util.Tween(RootSubTab.Left, 0.16, { Position = UDim2.fromOffset(0, 28) }, Enum.EasingStyle.Quart)
+						Util.Tween(RootSubTab.Right, 0.16, { Position = UDim2.new(0.5, 6, 0, 28) }, Enum.EasingStyle.Quart)
+					end
+
+					mainBtnInner.InputBegan:Connect(function(input)
+						if input.UserInputType == Enum.UserInputType.MouseButton1 then
+							Util.PlaySound("click")
+							selectRootSubTab()
+						end
+					end)
+
+					function RootSubTab:AddGroupbox(gCfg)
+						gCfg = gCfg or {}
+						local side = (gCfg.Side and string.lower(gCfg.Side) == "right") and rightCol or leftCol
+						return Tab.CreateGroupbox(side, gCfg)
+					end
+
+					table.insert(self.SubTabs, RootSubTab)
+				end
 			end
 
 			local subLeftCol = New("ScrollingFrame", {
@@ -1729,8 +1806,10 @@ function Library:CreateWindow(cfg)
 				Parent = subRightCol,
 			})
 
-			leftCol.Visible = false
-			rightCol.Visible = false
+			if #self.SubTabs == 0 then
+				leftCol.Visible = false
+				rightCol.Visible = false
+			end
 
 			local subBtnOuter, subBtnInner = Util.CreateHardBorder(self.SubTabBar, UDim2.fromOffset(80, 22), nil, Library.Theme.ControlTop, Library.Theme.ControlBottom)
 
@@ -3371,19 +3450,31 @@ function Library:CreateWindow(cfg)
 	return Window
 end
 
-function Library:SetThemeColor(colorType, newColor)
-	if not colorType or not newColor then return end
-
 function Library:SetFontSize(size)
+	if not size or typeof(size) ~= "number" then return end
 	self.Theme.FontSize = size
-	if self.Registry["FontSize"] then
+	if self.TextSizeRegistry then
+		for _, reg in ipairs(self.TextSizeRegistry) do
+			pcall(function()
+				if reg.Instance and reg.Instance.Parent then
+					reg.Instance.TextSize = math.clamp(math.floor(size + (reg.Delta or 0)), 8, 32)
+				end
+			end)
+		end
+	end
+	if self.Registry and self.Registry["FontSize"] then
 		for _, reg in ipairs(self.Registry["FontSize"]) do
 			pcall(function()
-				reg.Instance[reg.Property] = size
+				if reg.Instance and reg.Instance.Parent then
+					reg.Instance[reg.Property] = size
+				end
 			end)
 		end
 	end
 end
+
+function Library:SetThemeColor(colorType, newColor)
+	if not colorType or not newColor then return end
 
 	-- Keep a global snapshot of the 5 public theme keys so we can re-apply
 	-- on tab switches without needing to track each window separately
