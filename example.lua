@@ -1,6 +1,6 @@
 --[[
 	══════════════════════════════════════════════════════════════════════════════
-	  SKEETWARE UI v6.0 — GITHUB LOADER WITH ANIMATED LOGO
+	  AXIOM UI v6.0 — GITHUB LOADER WITH ANIMATED LOGO
 	  • Loads UI library and settings manager from GitHub
 	  • Features animated logo from SkeetUIkl GitHub repository
 	  • Clean, practical script structure ready for customization
@@ -17,23 +17,23 @@ local LocalPlayer = Players.LocalPlayer
 
 --══════════════════════════════════════════════════════════════════════════════
 -- GITHUB LOADER WITH ANIMATED LOGO SUPPORT
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/refs/heads/main/UI.luau"))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/refs/heads/main/ui.luau"))()
 local SettingsManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/refs/heads/main/settingsmanager.luau"))()
 
 -- Expose globally
 if getgenv then
-	getgenv().Skeetware = Library
-	getgenv().SkeetwareSettings = SettingsManager
+	getgenv().Axiom = Library
+	getgenv().AxiomSettings = SettingsManager
 end
 
 --════════════════════════════ WIRE UP SETTINGS MANAGER ═══════════════════════
 SettingsManager.SaveManager:SetLibrary(Library)
 SettingsManager.ThemeManager:SetLibrary(Library)
-SettingsManager.SaveManager:SetFolder("SkeetwareConfigs")
+SettingsManager.SaveManager:SetFolder("AxiomConfigs")
 
 --══════════════════════════ MAIN WINDOW WITH ANIMATED LOGO ════════════════════════════
 local Window = Library:CreateWindow({
-	Title = "Skeetware | Script",
+	Title = "axiom | script",
 	Size = UDim2.fromOffset(720, 520),
 })
 
@@ -148,19 +148,19 @@ SettingsManager.SaveManager:BuildConfigSection(configGroup)
 SettingsManager.ThemeManager:BuildThemeSection(uiGroup)
 
 --══════════════════════════ HUD & FINALIZE ═══════════════════════════
-Library:CreateWatermark("Skeetware.cc | Animated Logo Loaded")
+Library:CreateWatermark("axiom | script")
 
 -- Cleanup on unload
 Library.OnUnload = function()
-	print("[Skeetware] Script unloaded successfully!")
+	print("[Axiom] script unloaded successfully!")
 end
 
 -- Load saved config
 SettingsManager.SaveManager:CheckAutoload()
 
 Library:Notify({
-	Title = "Skeetware",
-	Text = "Script loaded with animated logo! Press INSERT to toggle menu.",
+	Title = "axiom",
+	Text = "script loaded with animated logo! press insert to toggle menu.",
 	Duration = 5,
 	Type = "Success",
 })
