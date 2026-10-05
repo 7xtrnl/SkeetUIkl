@@ -65,23 +65,54 @@ pcall(function()
 end)
 
 --============================================================================--
--- ANIMATED GIF BRANDING LOADER (new.gif)
+-- ANIMATED LOGO BRANDING LOADER (Spritesheet & Frame Cycler Engine)
 --============================================================================--
+local BrandSpritesheet = {
+	Loaded = false,
+	Uri = nil,
+	FrameWidth = 64,
+	FrameHeight = 64,
+	Columns = 10,
+	TotalFrames = 89,
+	Delay = 0.05,
+}
 local BrandGifFrames = {}
 local BrandGifLoaded = false
 
 pcall(function()
 	local getAsset = getcustomasset or getsynasset
 	if typeof(isfile) == "function" and typeof(writefile) == "function" and getAsset then
-		local gifPath = SkeetAssets .. "/brand.gif"
-		if not isfile(gifPath) then
-			writefile(gifPath, game:HttpGet("https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/main/new.gif"))
+		-- 1. Check for compiled spritesheet first (fastest, smoothest, lowest memory)
+		local sheetPath = SkeetAssets .. "/logosheet.png"
+		if not isfile(sheetPath) then
+			pcall(function()
+				writefile(sheetPath, game:HttpGet("https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/main/logosheet.png"))
+			end)
 		end
-		-- Some executors support GIF directly via getcustomasset
-		local assetUri = getAsset(gifPath)
-		if assetUri then
-			BrandGifFrames = { assetUri }
-			BrandGifLoaded = true
+		if isfile(sheetPath) then
+			local sheetUri = getAsset(sheetPath)
+			if sheetUri then
+				BrandSpritesheet.Uri = sheetUri
+				BrandSpritesheet.Loaded = true
+				BrandGifLoaded = true
+			end
+		end
+
+		-- 2. Fallback to raw brand.gif / logoaxiom.gif if sheet is unavailable
+		if not BrandGifLoaded then
+			local gifPath = SkeetAssets .. "/brand.gif"
+			if not isfile(gifPath) then
+				pcall(function()
+					writefile(gifPath, game:HttpGet("https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/main/logoaxiom.gif"))
+				end)
+			end
+			if isfile(gifPath) then
+				local assetUri = getAsset(gifPath)
+				if assetUri then
+					BrandGifFrames = { assetUri }
+					BrandGifLoaded = true
+				end
+			end
 		end
 	end
 end)
@@ -236,7 +267,13 @@ function Util.Create(class, props, children)
 	local inst = Instance.new(class)
 	local isTextClass = (class == "TextLabel" or class == "TextButton" or class == "TextBox")
 	for k, v in pairs(props or {}) do
-		if k ~= "Parent" then inst[k] = v end
+		if k ~= "Parent" then
+			if isTextClass and (k == "Text" or k == "PlaceholderText") and typeof(v) == "string" then
+				inst[k] = string.lower(v)
+			else
+				inst[k] = v
+			end
+		end
 	end
 	for _, child in ipairs(children or {}) do child.Parent = inst end
 	if props and props.Parent then inst.Parent = props.Parent end
@@ -256,6 +293,21 @@ function Util.Create(class, props, children)
 				Instance = inst,
 				Delta = baseSize - ((Library.Theme and Library.Theme.FontSize) or 12),
 			})
+		end
+		-- Enforce strictly lowercase text across all dynamic assignments
+		inst:GetPropertyChangedSignal("Text"):Connect(function()
+			local current = inst.Text
+			if typeof(current) == "string" and current ~= string.lower(current) then
+				inst.Text = string.lower(current)
+			end
+		end)
+		if class == "TextBox" then
+			inst:GetPropertyChangedSignal("PlaceholderText"):Connect(function()
+				local current = inst.PlaceholderText
+				if typeof(current) == "string" and current ~= string.lower(current) then
+					inst.PlaceholderText = string.lower(current)
+				end
+			end)
 		end
 		-- Subtle white-to-gray text gradient for polished look
 		if class ~= "TextBox" then
@@ -769,7 +821,7 @@ function Library:CreateKeybindList()
 		Font = Library.Theme.FontBold,
 		TextSize = Library.Theme.FontSize,
 		TextColor3 = Library.Theme.Text,
-		Text = "Keybinds",
+		Text = "keybinds",
 		Parent = kbInner,
 	})
 	Util.RegisterTheme(header, "TextColor3", "FontColor")
@@ -1105,7 +1157,7 @@ function Library:CreateWindow(cfg)
 		Size = UDim2.fromOffset(36, 36),
 		Position = UDim2.fromOffset(12, 12),
 		BackgroundTransparency = 1,
-		Image = (BrandGifLoaded and BrandGifFrames[1]) or Library.Icons.Shield,
+		Image = (BrandSpritesheet.Loaded and BrandSpritesheet.Uri) or (BrandGifLoaded and BrandGifFrames[1]) or Library.Icons.Shield,
 		ImageColor3 = BrandGifLoaded and Color3.fromRGB(255, 255, 255) or Library.Theme.Accent1,
 		ScaleType = Enum.ScaleType.Fit,
 		ZIndex = 12,
@@ -1114,6 +1166,37 @@ function Library:CreateWindow(cfg)
 	if not BrandGifLoaded then
 		Util.RegisterTheme(brandIcon, "ImageColor3", "AccentColor")
 	end
+
+	-- Animated logo player engine (Spritesheet with 89 frames or multi-frame sequence)
+	if BrandSpritesheet.Loaded then
+		brandIcon.Image = BrandSpritesheet.Uri
+		brandIcon.ImageRectSize = Vector2.new(BrandSpritesheet.FrameWidth, BrandSpritesheet.FrameHeight)
+		task.spawn(function()
+			local frame = 0
+			local total = BrandSpritesheet.TotalFrames
+			local cols = BrandSpritesheet.Columns
+			local fw = BrandSpritesheet.FrameWidth
+			local fh = BrandSpritesheet.FrameHeight
+			local delay = BrandSpritesheet.Delay or 0.05
+			while brandIcon and brandIcon.Parent do
+				local c = frame % cols
+				local r = math.floor(frame / cols)
+				brandIcon.ImageRectOffset = Vector2.new(c * fw, r * fh)
+				frame = (frame + 1) % total
+				task.wait(delay)
+			end
+		end)
+	elseif #BrandGifFrames > 1 then
+		task.spawn(function()
+			local idx = 1
+			while brandIcon and brandIcon.Parent do
+				brandIcon.Image = BrandGifFrames[idx]
+				idx = (idx % #BrandGifFrames) + 1
+				task.wait(0.05)
+			end
+		end)
+	end
+
 	-- Accent glow ring around brand icon
 	local brandGlow = New("Frame", {
 		Size = UDim2.fromOffset(40, 40),
@@ -1133,7 +1216,7 @@ function Library:CreateWindow(cfg)
 		TextSize = 12,
 		TextColor3 = Library.Theme.Text,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = "SKEET",
+		Text = "skeet",
 		ZIndex = 12,
 		Parent = brandingSection,
 	})
@@ -1146,7 +1229,7 @@ function Library:CreateWindow(cfg)
 		TextSize = 12,
 		TextColor3 = Library.Theme.TextDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = "WARE.CC",
+		Text = "ware.cc",
 		ZIndex = 12,
 		Parent = brandingSection,
 	})
@@ -1209,7 +1292,7 @@ function Library:CreateWindow(cfg)
 		Font = Library.Theme.Font,
 		TextSize = Library.Theme.FontSize - 1,
 		TextColor3 = Library.Theme.Text,
-		PlaceholderText = "Search...",
+		PlaceholderText = "search...",
 		PlaceholderColor3 = Library.Theme.TextDark,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ClearTextOnFocus = false,
@@ -1359,7 +1442,7 @@ function Library:CreateWindow(cfg)
 		TextSize = Library.Theme.FontSize,
 		TextColor3 = Library.Theme.TextDark,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = "No features match your search.",
+		Text = "no features match your search.",
 		Visible = false,
 		ZIndex = 50,
 		Parent = contentHolder,
@@ -1814,7 +1897,7 @@ function Library:CreateWindow(cfg)
 						Font = Library.Theme.FontBold,
 						TextSize = Library.Theme.FontSize - 1,
 						TextColor3 = Library.Theme.TextDim,
-						Text = "MAIN",
+						Text = "main",
 						ZIndex = 13,
 						Parent = mainBtnInner,
 					})
