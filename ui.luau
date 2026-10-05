@@ -70,8 +70,8 @@ end)
 local BrandSpritesheet = {
 	Loaded = false,
 	Uri = nil,
-	FrameWidth = 128,
-	FrameHeight = 48,
+	FrameWidth = 64,
+	FrameHeight = 64,
 	Columns = 10,
 	TotalFrames = 89,
 	Delay = 0.05,
