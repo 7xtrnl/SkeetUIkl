@@ -1,7 +1,7 @@
 --[[
 	══════════════════════════════════════════════════════════════════════════════
-	  SKEETWARE UI v5.0 — Pixel-Perfect Hard Edge Skeet Design Engine
-	  • Pure Authentic Skeet Styling (Clean Bevels, Razor-Sharp Borders, No Fake Glow)
+	  AXIOM UI v5.0 — Pixel-Perfect Hard Edge Modern Design Engine
+	  • Pure Authentic Hard-Edge Styling (Clean Bevels, Razor-Sharp Borders, No Fake Glow)
 	  • 100% Native 2D Saturation/Value Palette & 7-Stop Hue Rainbow Bar
 	  • Fully Dynamic Live Theme System (Fonts, Accents, Backgrounds, Outlines)
 	  • Non-Clipping Floating Dropdowns (Single & Multi-Select with Auto-List Sizing)
@@ -27,13 +27,13 @@ local LocalPlayer = Players.LocalPlayer
 --============================================================================--
 -- TAHOMA XP CUSTOM FONT LOADER
 --============================================================================--
-local SkeetDir = "SkeetwareUI"
-local SkeetAssets = SkeetDir .. "/Assets"
+local AxiomDir = "AxiomUI"
+local AxiomAssets = AxiomDir .. "/Assets"
 
 pcall(function()
 	if typeof(isfolder) == "function" and typeof(makefolder) == "function" then
-		if not isfolder(SkeetDir) then makefolder(SkeetDir) end
-		if not isfolder(SkeetAssets) then makefolder(SkeetAssets) end
+		if not isfolder(AxiomDir) then makefolder(AxiomDir) end
+		if not isfolder(AxiomAssets) then makefolder(AxiomAssets) end
 	end
 end)
 
@@ -41,7 +41,7 @@ local TahomaFont = nil
 pcall(function()
 	local getAsset = getcustomasset or getsynasset
 	if typeof(isfile) == "function" and typeof(writefile) == "function" and getAsset then
-		local ttfPath = SkeetAssets .. "/TahomaXP.ttf"
+		local ttfPath = AxiomAssets .. "/TahomaXP.ttf"
 		if not isfile(ttfPath) then
 			writefile(ttfPath, game:HttpGet("https://github.com/sametexe001/luas/raw/refs/heads/main/fonts/windows-xp-tahoma.ttf"))
 		end
@@ -58,7 +58,7 @@ pcall(function()
 			}
 		}
 
-		local fontPath = SkeetAssets .. "/TahomaXP.font"
+		local fontPath = AxiomAssets .. "/TahomaXP.font"
 		writefile(fontPath, HttpService:JSONEncode(fontData))
 		TahomaFont = Font.new(getAsset(fontPath))
 	end
@@ -70,8 +70,8 @@ end)
 local BrandSpritesheet = {
 	Loaded = false,
 	Uri = nil,
-	FrameWidth = 64,
-	FrameHeight = 64,
+	FrameWidth = 128,
+	FrameHeight = 48,
 	Columns = 10,
 	TotalFrames = 89,
 	Delay = 0.05,
@@ -83,7 +83,7 @@ pcall(function()
 	local getAsset = getcustomasset or getsynasset
 	if typeof(isfile) == "function" and typeof(writefile) == "function" and getAsset then
 		-- 1. Check for compiled spritesheet first (fastest, smoothest, lowest memory)
-		local sheetPath = SkeetAssets .. "/logosheet.png"
+		local sheetPath = AxiomAssets .. "/logosheet.png"
 		if not isfile(sheetPath) then
 			pcall(function()
 				writefile(sheetPath, game:HttpGet("https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/main/logosheet.png"))
@@ -100,7 +100,7 @@ pcall(function()
 
 		-- 2. Fallback to raw brand.gif / logoaxiom.gif if sheet is unavailable
 		if not BrandGifLoaded then
-			local gifPath = SkeetAssets .. "/brand.gif"
+			local gifPath = AxiomAssets .. "/brand.gif"
 			if not isfile(gifPath) then
 				pcall(function()
 					writefile(gifPath, game:HttpGet("https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/main/logoaxiom.gif"))
@@ -134,18 +134,18 @@ local function getSafeGuiParent()
 	return LocalPlayer:WaitForChild("PlayerGui")
 end
 
-local oldGui = getSafeGuiParent():FindFirstChild("SkeetwareUI")
+local oldGui = getSafeGuiParent():FindFirstChild("AxiomUI") or getSafeGuiParent():FindFirstChild("SkeetwareUI")
 if oldGui then oldGui:Destroy() end
 
 -- Clean up old blur effects
 pcall(function()
 	local lighting = game:GetService("Lighting")
-	local oldBlur = lighting:FindFirstChild("SkeetwareBlur")
+	local oldBlur = lighting:FindFirstChild("AxiomBlur") or lighting:FindFirstChild("SkeetwareBlur")
 	if oldBlur then oldBlur:Destroy() end
 end)
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SkeetwareUI"
+screenGui.Name = "AxiomUI"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -266,6 +266,9 @@ local Util = {}
 function Util.Create(class, props, children)
 	local inst = Instance.new(class)
 	local isTextClass = (class == "TextLabel" or class == "TextButton" or class == "TextBox")
+	if class == "TextBox" and (not props or props.Text == nil) then
+		inst.Text = ""
+	end
 	for k, v in pairs(props or {}) do
 		if k ~= "Parent" then
 			if isTextClass and (k == "Text" or k == "PlaceholderText") and typeof(v) == "string" then
@@ -723,7 +726,7 @@ initSnow()
 -- WATERMARK HUD
 --============================================================================--
 function Library:CreateWatermark(customTitle)
-	local title = customTitle or "skeetware.cc"
+	local title = customTitle or "axiom"
 	local wmOuter, wmInner = Util.CreateHardBorder(screenGui, UDim2.fromOffset(300, 24), UDim2.fromOffset(20, 20), Library.Theme.MainTop, Library.Theme.MainBottom, true)
 	wmOuter.ZIndex = 50
 	Util.AddSkeetGradientBar(wmInner, 2)
@@ -1144,9 +1147,9 @@ function Library:CreateWindow(cfg)
 		Parent = sidebarEdge,
 	})
 
-	-- Branding section with animated GIF logo
+	-- Branding section with animated Axiom logo
 	local brandingSection = New("Frame", {
-		Size = UDim2.new(1, 0, 0, 60),
+		Size = UDim2.new(1, 0, 0, 56),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundTransparency = 1,
 		ZIndex = 11,
@@ -1154,18 +1157,15 @@ function Library:CreateWindow(cfg)
 	})
 
 	local brandIcon = New("ImageLabel", {
-		Size = UDim2.fromOffset(36, 36),
-		Position = UDim2.fromOffset(12, 12),
+		Size = UDim2.new(1, -12, 1, -8),
+		Position = UDim2.fromOffset(6, 4),
 		BackgroundTransparency = 1,
 		Image = (BrandSpritesheet.Loaded and BrandSpritesheet.Uri) or (BrandGifLoaded and BrandGifFrames[1]) or Library.Icons.Shield,
-		ImageColor3 = BrandGifLoaded and Color3.fromRGB(255, 255, 255) or Library.Theme.Accent1,
+		ImageColor3 = Color3.fromRGB(255, 255, 255),
 		ScaleType = Enum.ScaleType.Fit,
 		ZIndex = 12,
 		Parent = brandingSection,
 	})
-	if not BrandGifLoaded then
-		Util.RegisterTheme(brandIcon, "ImageColor3", "AccentColor")
-	end
 
 	-- Animated logo player engine (Spritesheet with 89 frames or multi-frame sequence)
 	if BrandSpritesheet.Loaded then
@@ -1197,47 +1197,10 @@ function Library:CreateWindow(cfg)
 		end)
 	end
 
-	-- Accent glow ring around brand icon
-	local brandGlow = New("Frame", {
-		Size = UDim2.fromOffset(40, 40),
-		Position = UDim2.fromOffset(10, 10),
-		BackgroundTransparency = 1,
-		ZIndex = 11,
-		Parent = brandingSection,
-	})
-	New("UICorner", { CornerRadius = UDim.new(0, 6), Parent = brandGlow })
-	Util.AddGlow(brandGlow, Library.Theme.Accent1, 1.5, 0.45)
-
-	New("TextLabel", {
-		Size = UDim2.new(1, -56, 0, 20),
-		Position = UDim2.fromOffset(54, 14),
-		BackgroundTransparency = 1,
-		Font = Library.Theme.FontBold,
-		TextSize = 12,
-		TextColor3 = Library.Theme.Text,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = "skeet",
-		ZIndex = 12,
-		Parent = brandingSection,
-	})
-
-	New("TextLabel", {
-		Size = UDim2.new(1, -56, 0, 16),
-		Position = UDim2.fromOffset(54, 34),
-		BackgroundTransparency = 1,
-		Font = Library.Theme.Font,
-		TextSize = 12,
-		TextColor3 = Library.Theme.TextDim,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = "ware.cc",
-		ZIndex = 12,
-		Parent = brandingSection,
-	})
-
 	-- Tab list in sidebar
 	local sidebarTabList = New("Frame", {
-		Size = UDim2.new(1, 0, 1, -70),
-		Position = UDim2.fromOffset(0, 65),
+		Size = UDim2.new(1, 0, 1, -66),
+		Position = UDim2.fromOffset(0, 60),
 		BackgroundTransparency = 1,
 		ZIndex = 11,
 		Parent = sidebar,
@@ -1292,6 +1255,7 @@ function Library:CreateWindow(cfg)
 		Font = Library.Theme.Font,
 		TextSize = Library.Theme.FontSize - 1,
 		TextColor3 = Library.Theme.Text,
+		Text = "",
 		PlaceholderText = "search...",
 		PlaceholderColor3 = Library.Theme.TextDark,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -3787,7 +3751,7 @@ function Library:Unload()
 	end
 end
 
-print(("[Skeetware] build %s loaded | searchbar = 'Search...' | %d registered theme keys"):format(
+print(("[Axiom] build %s loaded | searchbar = 'search...' | %d registered theme keys"):format(
 	Library.Build or "?", (function() local n = 0 for _ in pairs(Library.ThemeSignals) do n = n + 1 end return n end)()))
 
 return Library
