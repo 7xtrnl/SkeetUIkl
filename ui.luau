@@ -203,6 +203,8 @@ local Library = {
 	Windows = {},
 	Build      = "5.2.1",
 	ParticleEffects = {},
+	RainbowGradients = {},
+	RainbowAnimation = true,
 
 	Theme = {
 		Accent1       = Color3.fromRGB(168, 219, 95),  -- Skeet Green
@@ -424,41 +426,141 @@ function Util.CreateHardBorder(parent, size, pos, bgTop, bgBottom, isMainWin)
 end
 
 function Util.AddSkeetGradientBar(parent, height)
-	local bar = New("Frame", {
-		Size = UDim2.new(1, 0, 0, height or 2),
+	local barH = height or 2
+
+	-- Seamless 7-stop looping rainbow spectrum for silky smooth animation
+	local rainbowColors = ColorSequence.new({
+		ColorSequenceKeypoint.new(0.00, Color3.fromRGB(54, 163, 247)),  -- Sky Blue
+		ColorSequenceKeypoint.new(0.18, Color3.fromRGB(98, 216, 247)),  -- Skeet Cyan
+		ColorSequenceKeypoint.new(0.36, Color3.fromRGB(168, 219, 95)),  -- Skeet Green
+		ColorSequenceKeypoint.new(0.54, Color3.fromRGB(247, 184, 92)),  -- Warm Amber
+		ColorSequenceKeypoint.new(0.72, Color3.fromRGB(247, 104, 181)), -- Neon Pink
+		ColorSequenceKeypoint.new(0.88, Color3.fromRGB(184, 119, 247)), -- Lavender Purple
+		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(54, 163, 247)),  -- Sky Blue (Seamless loop)
+	})
+
+	local barContainer = New("Frame", {
+		Name = "SkeetRainbowBar",
+		Size = UDim2.new(1, 0, 0, barH),
 		Position = UDim2.fromOffset(0, 0),
-		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		ZIndex = 10,
 		ClipsDescendants = false,
 		Parent = parent,
 	})
-	New("UICorner", { CornerRadius = UDim.new(0, height or 2), Parent = bar })
 
-	local grad = New("UIGradient", {
-		Rotation = 0,
-		Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0.00, Color3.fromRGB(54, 163, 247)),
-			ColorSequenceKeypoint.new(0.20, Color3.fromRGB(98, 216, 247)),
-			ColorSequenceKeypoint.new(0.40, Color3.fromRGB(168, 219, 95)),
-			ColorSequenceKeypoint.new(0.60, Color3.fromRGB(247, 184, 92)),
-			ColorSequenceKeypoint.new(0.80, Color3.fromRGB(247, 104, 181)),
-			ColorSequenceKeypoint.new(1.00, Color3.fromRGB(184, 119, 247)),
-		}),
-		Parent = bar,
+	-- 1. Outer Diffuse Bloom Aura (Volumetric neon halo radiating outward)
+	local bloomAura = New("ImageLabel", {
+		Name = "RainbowBloomAura",
+		Size = UDim2.new(1, 32, 0, barH + 26),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundTransparency = 1,
+		Image = "rbxassetid://18245826428",
+		ImageColor3 = Color3.fromRGB(255, 255, 255),
+		ImageTransparency = 0.38,
+		ScaleType = Enum.ScaleType.Slice,
+		SliceCenter = Rect.new(21, 21, 79, 79),
+		BorderSizePixel = 0,
+		ZIndex = 8,
+		Parent = barContainer,
 	})
-	New("UIGradient", {
+	local bloomGrad = New("UIGradient", {
 		Rotation = 0,
-		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.3),
-			NumberSequenceKeypoint.new(0.5, 0),
-			NumberSequenceKeypoint.new(1, 0.3),
-		}),
-		Parent = bar,
+		Color = rainbowColors,
+		Parent = bloomAura,
 	})
 
-	return bar
+	-- 2. Downward Ambient Light Field Wash (Illuminates dark window headers below)
+	local underGlow = New("ImageLabel", {
+		Name = "RainbowUnderGlow",
+		Size = UDim2.new(1, 16, 0, barH + 32),
+		Position = UDim2.new(0.5, 0, 0, 0),
+		AnchorPoint = Vector2.new(0.5, 0),
+		BackgroundTransparency = 1,
+		Image = "rbxassetid://18245826428",
+		ImageColor3 = Color3.fromRGB(255, 255, 255),
+		ImageTransparency = 0.55,
+		ScaleType = Enum.ScaleType.Slice,
+		SliceCenter = Rect.new(21, 21, 79, 79),
+		BorderSizePixel = 0,
+		ZIndex = 7,
+		Parent = barContainer,
+	})
+	local underGrad = New("UIGradient", {
+		Rotation = 0,
+		Color = rainbowColors,
+		Parent = underGlow,
+	})
+
+	-- 3. High-Intensity Core Neon Bar
+	local coreBar = New("Frame", {
+		Name = "CoreBar",
+		Size = UDim2.new(1, 0, 1, 0),
+		Position = UDim2.fromOffset(0, 0),
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BorderSizePixel = 0,
+		ZIndex = 11,
+		ClipsDescendants = false,
+		Parent = barContainer,
+	})
+	New("UICorner", { CornerRadius = UDim.new(0, barH), Parent = coreBar })
+	local coreGrad = New("UIGradient", {
+		Rotation = 0,
+		Color = rainbowColors,
+		Parent = coreBar,
+	})
+
+	-- 4. Crystal Gloss Line (Crisp razor reflection on upper half)
+	local gloss = New("Frame", {
+		Name = "RainbowGloss",
+		Size = UDim2.new(1, 0, 0.5, 0),
+		Position = UDim2.fromOffset(0, 0),
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 0.65,
+		BorderSizePixel = 0,
+		ZIndex = 12,
+		Parent = coreBar,
+	})
+	New("UICorner", { CornerRadius = UDim.new(0, barH), Parent = gloss })
+
+	-- Register for live ambient wave animation
+	if Library.RainbowGradients then
+		table.insert(Library.RainbowGradients, {
+			BloomGrad = bloomGrad,
+			UnderGrad = underGrad,
+			CoreGrad = coreGrad,
+			BloomAura = bloomAura,
+			UnderGlow = underGlow,
+		})
+	end
+
+	return barContainer
 end
+
+-- Ambient Rainbow Shimmer & Breathing Wave Engine
+table.insert(Library.Connections, RunService.RenderStepped:Connect(function()
+	if Library.Unloaded or not Library.RainbowAnimation or not Library.RainbowGradients then return end
+	local t = tick()
+	local offset = (t * 0.09) % 1
+	local pulseBloom = 0.38 + math.sin(t * 2.2) * 0.08
+	local pulseUnder = 0.55 + math.sin(t * 2.2) * 0.06
+
+	for i = #Library.RainbowGradients, 1, -1 do
+		local entry = Library.RainbowGradients[i]
+		if entry.CoreGrad and entry.CoreGrad.Parent then
+			local vec = Vector2.new(offset, 0)
+			entry.CoreGrad.Offset = vec
+			if entry.BloomGrad and entry.BloomGrad.Parent then entry.BloomGrad.Offset = vec end
+			if entry.UnderGrad and entry.UnderGrad.Parent then entry.UnderGrad.Offset = vec end
+			if entry.BloomAura and entry.BloomAura.Parent then entry.BloomAura.ImageTransparency = pulseBloom end
+			if entry.UnderGlow and entry.UnderGlow.Parent then entry.UnderGlow.ImageTransparency = pulseUnder end
+		else
+			table.remove(Library.RainbowGradients, i)
+		end
+	end
+end))
 
 --============================================================================--
 -- SOUND EFFECTS SYSTEM
