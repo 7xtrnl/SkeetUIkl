@@ -17,7 +17,7 @@ local LocalPlayer = Players.LocalPlayer
 
 --══════════════════════════════════════════════════════════════════════════════
 -- GITHUB LOADER WITH ANIMATED LOGO SUPPORT
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/refs/heads/main/skeet.luau"))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/refs/heads/main/UI.luau"))()
 local SettingsManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/refs/heads/main/settingsmanager.luau"))()
 
 -- Expose globally
