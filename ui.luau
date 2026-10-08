@@ -401,12 +401,8 @@ function Util.CreateHardBorder(parent, size, pos, bgTop, bgBottom, isMainWin)
 
 	if isMainWin then
 		Util.RegisterTheme(inner, "BackgroundColor3", "BackgroundColor")
-		-- Main window gets a strong accent glow
-		Util.AddGlow(outer, Library.Theme.Accent1, 1.5, 0.55)
 	else
 		Util.RegisterTheme(inner, "BackgroundColor3", "MainColor")
-		-- Groupboxes/controls get a subtle glow
-		Util.AddGlow(outer, Library.Theme.Accent1, 1, 0.82)
 	end
 
 	-- Subtle dark shading gradient that scales with dynamic theme colors
@@ -425,19 +421,22 @@ function Util.CreateHardBorder(parent, size, pos, bgTop, bgBottom, isMainWin)
 	return outer, inner
 end
 
+local function makeChromaSequence(shift)
+	shift = shift or 0
+	return ColorSequence.new({
+		ColorSequenceKeypoint.new(0.00, Color3.fromHSV((shift + 0.00) % 1, 1, 1)),
+		ColorSequenceKeypoint.new(0.14, Color3.fromHSV((shift + 0.14) % 1, 1, 1)),
+		ColorSequenceKeypoint.new(0.28, Color3.fromHSV((shift + 0.28) % 1, 1, 1)),
+		ColorSequenceKeypoint.new(0.42, Color3.fromHSV((shift + 0.42) % 1, 1, 1)),
+		ColorSequenceKeypoint.new(0.57, Color3.fromHSV((shift + 0.57) % 1, 1, 1)),
+		ColorSequenceKeypoint.new(0.71, Color3.fromHSV((shift + 0.71) % 1, 1, 1)),
+		ColorSequenceKeypoint.new(0.85, Color3.fromHSV((shift + 0.85) % 1, 1, 1)),
+		ColorSequenceKeypoint.new(1.00, Color3.fromHSV((shift + 1.00) % 1, 1, 1)),
+	})
+end
+
 function Util.AddSkeetGradientBar(parent, height)
 	local barH = height or 2
-
-	-- Seamless 7-stop looping rainbow spectrum for silky smooth animation
-	local rainbowColors = ColorSequence.new({
-		ColorSequenceKeypoint.new(0.00, Color3.fromRGB(54, 163, 247)),  -- Sky Blue
-		ColorSequenceKeypoint.new(0.18, Color3.fromRGB(98, 216, 247)),  -- Skeet Cyan
-		ColorSequenceKeypoint.new(0.36, Color3.fromRGB(168, 219, 95)),  -- Skeet Green
-		ColorSequenceKeypoint.new(0.54, Color3.fromRGB(247, 184, 92)),  -- Warm Amber
-		ColorSequenceKeypoint.new(0.72, Color3.fromRGB(247, 104, 181)), -- Neon Pink
-		ColorSequenceKeypoint.new(0.88, Color3.fromRGB(184, 119, 247)), -- Lavender Purple
-		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(54, 163, 247)),  -- Sky Blue (Seamless loop)
-	})
 
 	local barContainer = New("Frame", {
 		Name = "SkeetRainbowBar",
@@ -445,118 +444,95 @@ function Util.AddSkeetGradientBar(parent, height)
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		ZIndex = 10,
+		ZIndex = 12,
 		ClipsDescendants = false,
 		Parent = parent,
 	})
 
-	-- 1. Outer Diffuse Bloom Aura (Volumetric neon halo radiating outward)
-	local bloomAura = New("ImageLabel", {
-		Name = "RainbowBloomAura",
-		Size = UDim2.new(1, 32, 0, barH + 26),
-		Position = UDim2.new(0.5, 0, 0.5, 0),
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		BackgroundTransparency = 1,
-		Image = "rbxassetid://18245826428",
-		ImageColor3 = Color3.fromRGB(255, 255, 255),
-		ImageTransparency = 0.38,
-		ScaleType = Enum.ScaleType.Slice,
-		SliceCenter = Rect.new(21, 21, 79, 79),
-		BorderSizePixel = 0,
-		ZIndex = 8,
-		Parent = barContainer,
-	})
-	local bloomGrad = New("UIGradient", {
-		Rotation = 0,
-		Color = rainbowColors,
-		Parent = bloomAura,
-	})
+	local glowGrads = {}
 
-	-- 2. Downward Ambient Light Field Wash (Illuminates dark window headers below)
-	local underGlow = New("ImageLabel", {
-		Name = "RainbowUnderGlow",
-		Size = UDim2.new(1, 16, 0, barH + 32),
-		Position = UDim2.new(0.5, 0, 0, 0),
-		AnchorPoint = Vector2.new(0.5, 0),
-		BackgroundTransparency = 1,
-		Image = "rbxassetid://18245826428",
-		ImageColor3 = Color3.fromRGB(255, 255, 255),
-		ImageTransparency = 0.55,
-		ScaleType = Enum.ScaleType.Slice,
-		SliceCenter = Rect.new(21, 21, 79, 79),
-		BorderSizePixel = 0,
-		ZIndex = 7,
-		Parent = barContainer,
-	})
-	local underGrad = New("UIGradient", {
-		Rotation = 0,
-		Color = rainbowColors,
-		Parent = underGlow,
-	})
+	-- Layered downward atmospheric glow wash (pure native, zero image artifacts)
+	local glowLayers = {
+		{ h = barH + 4,  y = -1, trans = 0.50, z = 7 },
+		{ h = barH + 8,  y = 0,  trans = 0.68, z = 6 },
+		{ h = barH + 16, y = 0,  trans = 0.82, z = 5 },
+		{ h = barH + 26, y = 0,  trans = 0.92, z = 4 },
+	}
 
-	-- 3. High-Intensity Core Neon Bar
+	for _, cfg in ipairs(glowLayers) do
+		local layer = New("Frame", {
+			Name = "RgbGlowLayer",
+			Size = UDim2.new(1, 0, 0, cfg.h),
+			Position = UDim2.fromOffset(0, cfg.y),
+			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+			BackgroundTransparency = cfg.trans,
+			BorderSizePixel = 0,
+			ZIndex = cfg.z,
+			ClipsDescendants = false,
+			Parent = barContainer,
+		})
+		local g = New("UIGradient", {
+			Rotation = 0,
+			Color = makeChromaSequence(0),
+			Parent = layer,
+		})
+		table.insert(glowGrads, g)
+	end
+
+	-- Core Sharp Neon RGB Bar
 	local coreBar = New("Frame", {
-		Name = "CoreBar",
-		Size = UDim2.new(1, 0, 1, 0),
+		Name = "CoreRgbBar",
+		Size = UDim2.new(1, 0, 0, barH),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 		BorderSizePixel = 0,
-		ZIndex = 11,
+		ZIndex = 15,
 		ClipsDescendants = false,
 		Parent = barContainer,
 	})
-	New("UICorner", { CornerRadius = UDim.new(0, barH), Parent = coreBar })
 	local coreGrad = New("UIGradient", {
 		Rotation = 0,
-		Color = rainbowColors,
+		Color = makeChromaSequence(0),
 		Parent = coreBar,
 	})
+	table.insert(glowGrads, coreGrad)
 
-	-- 4. Crystal Gloss Line (Crisp razor reflection on upper half)
-	local gloss = New("Frame", {
-		Name = "RainbowGloss",
-		Size = UDim2.new(1, 0, 0.5, 0),
+	-- Top Crystal Razor Gloss Line
+	New("Frame", {
+		Name = "RgbGlossLine",
+		Size = UDim2.new(1, 0, 0, 1),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-		BackgroundTransparency = 0.65,
+		BackgroundTransparency = 0.50,
 		BorderSizePixel = 0,
-		ZIndex = 12,
+		ZIndex = 16,
 		Parent = coreBar,
 	})
-	New("UICorner", { CornerRadius = UDim.new(0, barH), Parent = gloss })
 
-	-- Register for live ambient wave animation
 	if Library.RainbowGradients then
-		table.insert(Library.RainbowGradients, {
-			BloomGrad = bloomGrad,
-			UnderGrad = underGrad,
-			CoreGrad = coreGrad,
-			BloomAura = bloomAura,
-			UnderGlow = underGlow,
-		})
+		table.insert(Library.RainbowGradients, glowGrads)
 	end
 
 	return barContainer
 end
 
--- Ambient Rainbow Shimmer & Breathing Wave Engine
+-- Ambient Live Flowing RGB Chroma Engine
 table.insert(Library.Connections, RunService.RenderStepped:Connect(function()
 	if Library.Unloaded or not Library.RainbowAnimation or not Library.RainbowGradients then return end
-	local t = tick()
-	local offset = (t * 0.09) % 1
-	local pulseBloom = 0.38 + math.sin(t * 2.2) * 0.08
-	local pulseUnder = 0.55 + math.sin(t * 2.2) * 0.06
+	local shift = (tick() * 0.18) % 1
+	local chroma = makeChromaSequence(shift)
 
 	for i = #Library.RainbowGradients, 1, -1 do
-		local entry = Library.RainbowGradients[i]
-		if entry.CoreGrad and entry.CoreGrad.Parent then
-			local vec = Vector2.new(offset, 0)
-			entry.CoreGrad.Offset = vec
-			if entry.BloomGrad and entry.BloomGrad.Parent then entry.BloomGrad.Offset = vec end
-			if entry.UnderGrad and entry.UnderGrad.Parent then entry.UnderGrad.Offset = vec end
-			if entry.BloomAura and entry.BloomAura.Parent then entry.BloomAura.ImageTransparency = pulseBloom end
-			if entry.UnderGlow and entry.UnderGlow.Parent then entry.UnderGlow.ImageTransparency = pulseUnder end
-		else
+		local group = Library.RainbowGradients[i]
+		local active = false
+		for j = 1, #group do
+			local grad = group[j]
+			if grad and grad.Parent then
+				grad.Color = chroma
+				active = true
+			end
+		end
+		if not active then
 			table.remove(Library.RainbowGradients, i)
 		end
 	end
