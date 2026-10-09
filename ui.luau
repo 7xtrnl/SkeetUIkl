@@ -2336,6 +2336,143 @@ function Library:CreateWindow(cfg)
 				end
 			end
 
+			--============================================================================
+			-- FEATURE SETTINGS (GEAR ICON + FLOATING DEEP-MENU)
+			-- Pass Settings = { { Type = "Toggle", Text = "flag", ... }, ... } on any
+			-- toggle/slider/dropdown/button cfg to attach a small gear that opens a
+			-- floating mini-menu with nested controls.
+			--============================================================================
+			local activeSettingsPop = nil
+			local function closeSettingsPop()
+				if activeSettingsPop then
+					if activeSettingsPop.blocker then activeSettingsPop.blocker:Destroy() end
+					if activeSettingsPop.root then activeSettingsPop.root:Destroy() end
+					activeSettingsPop = nil
+				end
+			end
+
+			local function openSettingsPop(anchor, cfg)
+				closeSettingsPop()
+				local absPos = anchor.AbsolutePosition
+				local absSize = anchor.AbsoluteSize
+				local blocker = New("TextButton", {
+					Size = UDim2.fromScale(1, 1),
+					BackgroundTransparency = 1,
+					Text = "",
+					ZIndex = 9980,
+					Parent = screenGui,
+				})
+				blocker.MouseButton1Click:Connect(closeSettingsPop)
+
+				local popW = cfg.Width or 200
+				local outer, inner = Util.CreateHardBorder(screenGui, UDim2.fromOffset(popW, 38), UDim2.fromOffset(absPos.X + absSize.X + 6, absPos.Y), Library.Theme.MainTop, Library.Theme.MainBottom, true)
+				outer.ZIndex = 9985
+				outer.ClipsDescendants = true
+				Util.AddSkeetGradientBar(inner, 1)
+
+				-- grow-in animation: start small, final height tweens after content build
+				outer.Size = UDim2.fromOffset(popW, 20)
+
+				local list = New("Frame", {
+					Size = UDim2.new(1, -14, 0, 0),
+					Position = UDim2.fromOffset(7, 6),
+					BackgroundTransparency = 1,
+					AutomaticSize = Enum.AutomaticSize.Y,
+					ZIndex = 9986,
+					Parent = inner,
+				})
+				New("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder, Parent = list })
+
+				-- header
+				New("TextLabel", {
+					Size = UDim2.new(1, 0, 0, 16),
+					BackgroundTransparency = 1,
+					Font = Library.Theme.FontBold,
+					TextSize = Library.Theme.FontSize,
+					TextColor3 = Library.Theme.Accent1,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					Text = cfg.Title or "settings",
+					ZIndex = 9987,
+					Parent = list,
+				})
+
+				-- mini control builders (reuse Group builders inside the popup)
+				local miniGroup = setmetatable({}, { __index = Group })
+				for key, fn in pairs(Group) do
+					miniGroup[key] = fn
+				end
+				-- swap parent into elemList-equivalent
+				local realElemList = elemList
+				elemList = list
+				local okBuild, err = pcall(function()
+					local spec = cfg.Settings or cfg.Items or {}
+					for _, sub in ipairs(spec) do
+						local kind = string.lower(sub.Type or sub.type or "toggle")
+						if kind == "toggle" then
+							miniGroup:AddToggle(sub)
+						elseif kind == "slider" then
+							miniGroup:AddSlider(sub)
+						elseif kind == "dropdown" then
+							miniGroup:AddDropdown(sub)
+						elseif kind == "button" then
+							miniGroup:AddButton(sub)
+						elseif kind == "colorpicker" then
+							miniGroup:AddColorpicker(sub)
+						elseif kind == "keybind" then
+							miniGroup:AddKeybind(sub)
+						end
+					end
+				end)
+				elemList = realElemList
+				if not okBuild then
+					warn("[axiom] settings popup build failed:", err)
+				end
+				-- compute height after autosize pass
+				task.defer(function()
+					if outer.Parent and list.Parent then
+						local h = math.clamp(list.AbsoluteSize.Y + 14, 40, 260)
+						Util.Tween(outer, 0.18, { Size = UDim2.fromOffset(popW, h) }, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+					end
+				end)
+
+				activeSettingsPop = { root = outer, blocker = blocker }
+				return outer
+			end
+
+			-- Small gear button that opens the settings popup anchored to it
+			local function AttachGear(cfg, anchorParent)
+				local gear = New("ImageButton", {
+					Size = UDim2.fromOffset(12, 12),
+					BackgroundTransparency = 1,
+					Image = Library.Icons.Settings,
+					ImageColor3 = Library.Theme.TextDim,
+					ImageTransparency = 0.25,
+					ZIndex = 8,
+					Parent = anchorParent,
+				})
+				Util.RegisterTheme(gear, "ImageColor3", "TextDim")
+				local gearBtn = New("TextButton", {
+					Size = UDim2.fromScale(1, 1),
+					BackgroundTransparency = 1,
+					Text = "",
+					ZIndex = 9,
+					Parent = gear,
+				})
+				gearBtn.MouseEnter:Connect(function()
+					Util.Tween(gear, 0.12, { ImageColor3 = Library.Theme.Accent1, ImageTransparency = 0 })
+					Util.Tween(gear, 0.35, { Rotation = 180 }, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+				end)
+				gearBtn.MouseLeave:Connect(function()
+					Util.Tween(gear, 0.12, { ImageColor3 = Library.Theme.TextDim, ImageTransparency = 0.25 })
+				end)
+				gearBtn.MouseButton1Click:Connect(function()
+					Util.PlaySound("click")
+					openSettingsPop(gear, cfg)
+				end)
+				hookTooltip(gearBtn, cfg.GearTitle or "open feature settings")
+				return gear
+			end
+
 			local Group = {}
 
 			-- COLORPICKER (100% NATIVE SV + HUE GRADIENTS)
@@ -2978,6 +3115,10 @@ function Library:CreateWindow(cfg)
 					setToggle(not Toggle.Value)
 				end)
 				hookTooltip(clickBtn, tCfg.Description)
+				-- Feature settings gear (Settings = {...} spec)
+				if tCfg.Settings then
+					AttachGear({ Title = tCfg.GearTitle or tText, Settings = tCfg.Settings, Width = tCfg.GearWidth }, inlineHold)
+				end
 
 				function Toggle:Set(val) setToggle(val) end
 				function Toggle:Get() return Toggle.Value end
@@ -3107,6 +3248,18 @@ function Library:CreateWindow(cfg)
 					Groupbox = gbOuter,
 				})
 				hookTooltip(row, sCfg.Description)
+				-- Feature settings gear (Settings = {...} spec), anchored top-right of the row
+				local sGearHold = nil
+				if sCfg.Settings then
+					sGearHold = New("Frame", {
+						Size = UDim2.fromOffset(14, 14),
+						Position = UDim2.new(1, -16, 0, 0),
+						BackgroundTransparency = 1,
+						ZIndex = 8,
+						Parent = row,
+					})
+					AttachGear({ Title = sCfg.GearTitle or sText, Settings = sCfg.Settings, Width = sCfg.GearWidth }, sGearHold)
+				end
 
 				local label = New("TextLabel", {
 					Size = UDim2.new(0.65, 0, 0, 14),
@@ -3624,6 +3777,17 @@ function Library:CreateWindow(cfg)
 				})
 				clickBtn.MouseButton1Click:Connect(openDropdown)
 				hookTooltip(clickBtn, dCfg.Description)
+				-- Feature settings gear (Settings = {...} spec), anchored right of the dd block
+				if dCfg.Settings then
+					local dGearHold = New("Frame", {
+						Size = UDim2.fromOffset(14, 14),
+						Position = UDim2.new(1, -16, 0, 18),
+						BackgroundTransparency = 1,
+						ZIndex = 8,
+						Parent = row,
+					})
+					AttachGear({ Title = dCfg.GearTitle or dText, Settings = dCfg.Settings, Width = dCfg.GearWidth }, dGearHold)
+				end
 
 				Library.Flags[flag] = isMulti and multiSelected or curVal
 
