@@ -1086,184 +1086,217 @@ lockBtn.MouseButton1Click:Connect(function()
 locked = not locked
 lockBtn.Text = locked and "[-]" or "[+]"
 lockBtn.TextColor3 = locked and Library.Theme.Accent1 or Library.Theme.TextDim
-Util.PlaySound("toggle")
+	Util.PlaySound("toggle")
 end)
 
--- Mannequin canvas (3-angle column at left, preview at right)
-local mannequin = New("Frame", {
-Size = UDim2.new(1, -20, 1, -28),
-Position = UDim2.fromOffset(10, 24),
-BackgroundTransparency = 1,
-ClipsDescendants = true,
-Parent = inner,
-})
+	-- Spin state first so the drag handlers + render loop below can reference it
+	local spin, manualYaw, manualPitch = 0, 0, 0
 
--- Draw mannequin bunny (simple stat: torso, head, bunny ears, arms out) — 3-angle side-by-side
-local angleFrames = {}
-local angleNames = { "front", "rq", "back" }
-local angleColor = Library.Theme.Accent1
-for i, name in ipairs(angleNames) do
-local f = New("Frame", {
-Size = UDim2.new(0.3333, -2, 1, 0),
-Position = UDim2.new((i - 1) * 0.3333, 0, 0, 0),
-BackgroundTransparency = 1,
-Parent = mannequin,
-})
-angleFrames[name] = f
+	-- Mannequin canvas: a WorldModel hosts ONE rig rendered from three fixed
+	-- angles (front, 3/4, back) using three ViewportFrames. Rotates live + drag.
+	local angleNames = { "front", "rq", "back" }
+	local angleYaw = { front = 0, rq = 0.7, back = math.pi }
+	local mannequin = New("Frame", {
+		Size = UDim2.new(1, -20, 1, -28),
+		Position = UDim2.fromOffset(10, 24),
+		BackgroundTransparency = 1,
+		ClipsDescendants = true,
+		Parent = inner,
+	})
 
--- Body blocks (torso + head + ears)
-local torso = New("Frame", {
-Size = UDim2.new(0.55, 0, 0.4, 0),
-Position = UDim2.new(0.225, 0, 0.28, 0),
-BackgroundColor3 = angleColor,
-BackgroundTransparency = 0.35,
-BorderSizePixel = 0,
-Parent = f,
-})
-local head = New("Frame", {
-Size = UDim2.new(0.32, 0, 0.18, 0),
-Position = UDim2.new(0.34, 0, 0.1, 0),
-BackgroundColor3 = angleColor,
-BackgroundTransparency = 0.2,
-BorderSizePixel = 0,
-Parent = f,
-})
-local earL = New("Frame", {
-Size = UDim2.new(0.08, 0, 0.14, 0),
-Position = UDim2.fromScale(0.32, 0.0),
-Rotation = name == "back" and 0 or -12,
-BackgroundColor3 = angleColor,
-BackgroundTransparency = 0.25,
-BorderSizePixel = 0,
-Parent = f,
-})
-local earR = New("Frame", {
-Size = UDim2.new(0.08, 0, 0.14, 0),
-Position = UDim2.fromScale(0.6, 0.0),
-Rotation = name == "back" and 0 or 12,
-BackgroundColor3 = angleColor,
-BackgroundTransparency = 0.25,
-BorderSizePixel = 0,
-Parent = f,
-})
-local armL = New("Frame", {
-Size = UDim2.new(0.18, 0, 0.06, 0),
-Position = UDim2.fromScale(0.08, 0.34),
-BackgroundColor3 = angleColor,
-BackgroundTransparency = 0.4,
-BorderSizePixel = 0,
-Parent = f,
-})
-local armR = New("Frame", {
-Size = UDim2.new(0.18, 0, 0.06, 0),
-Position = UDim2.fromScale(0.74, 0.34),
-BackgroundColor3 = angleColor,
-BackgroundTransparency = 0.4,
-BorderSizePixel = 0,
-Parent = f,
-})
-local legL = New("Frame", {
-Size = UDim2.new(0.14, 0, 0.32, 0),
-Position = UDim2.fromScale(0.28, 0.68),
-BackgroundColor3 = angleColor,
-BackgroundTransparency = 0.4,
-BorderSizePixel = 0,
-Parent = f,
-})
-local legR = New("Frame", {
-Size = UDim2.new(0.14, 0, 0.32, 0),
-Position = UDim2.fromScale(0.58, 0.68),
-BackgroundColor3 = angleColor,
-BackgroundTransparency = 0.4,
-BorderSizePixel = 0,
-Parent = f,
-})
+	-- Load the REAL Springtrap mesh from Roblox Creator Store.
+	-- Fallback: blocky rig stub degrades gracefully if the asset can't stream.
+	local worldModel = Instance.new("WorldModel")
+	local rigModel = nil
+	do
+		local ok, loaded = pcall(function()
+			local objs = game:GetObjects("rbxassetid://" .. tostring(cfg.ModelId or 135539621158951))
+			if typeof(objs) == "table" and objs[1] then return objs[1] end
+			return nil
+		end)
+		if ok and loaded then
+			loaded.Name = "SpringtrapModel"
+			-- neutralize scripts inside the imported asset
+			for _, d in ipairs(loaded:GetDescendants()) do
+				if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") then
+					d:Destroy()
+				end
+			end
+			rigModel = loaded
+		else
+			-- fallback blocky rig stub
+			local m = Instance.new("Model")
+			m.Name = "SpringtrapFallback"
+			local function part(name, size, cf)
+				local p = Instance.new("Part")
+				p.Name = name
+				p.Anchored = true
+				p.CanCollide = false
+				p.CanQuery = false
+				p.CastShadow = false
+				p.Size = size
+				p.CFrame = cf
+				p.Color = Library.Theme.Accent1
+				p.Material = Enum.Material.SmoothPlastic
+				p.Parent = m
+				return p
+			end
+			part("Torso", Vector3.new(2, 2.6, 1), CFrame.new(0, 3.3, 0))
+			part("Head", Vector3.new(1.5, 1.5, 1.2), CFrame.new(0, 5.15, 0))
+			part("EarL", Vector3.new(0.35, 1.1, 0.3), CFrame.new(0.45, 6.2, 0) * CFrame.Angles(0, 0, math.rad(8)))
+			part("EarR", Vector3.new(0.35, 1.1, 0.3), CFrame.new(-0.45, 6.2, 0) * CFrame.Angles(0, 0, math.rad(-8)))
+			part("ArmL", Vector3.new(0.55, 2.4, 0.55), CFrame.new(1.35, 3.5, 0))
+			part("ArmR", Vector3.new(0.55, 2.4, 0.55), CFrame.new(-1.35, 3.5, 0))
+			part("LegL", Vector3.new(0.7, 2, 0.7), CFrame.new(0.45, 1, 0))
+			part("LegR", Vector3.new(0.7, 2, 0.7), CFrame.new(-0.45, 1, 0))
+			rigModel = m
+		end
+	end
+	-- Ground the model at the panel pivot before capturing its original transform
+	worldModel.Parent = mannequin
+	rigModel.Parent = worldModel
+	local rigPivot = rigModel:GetPivot()
 
--- Live ESP-style bars drawn around THIS angle's mannequin
-local bbox = New("Frame", {
-Size = UDim2.fromScale(0.92, 0.96),
-Position = UDim2.fromScale(0.04, 0.02),
-BackgroundTransparency = 1,
-BorderSizePixel = 0,
-Visible = false,
-Parent = f,
-})
-local bboxStroke = New("UIStroke", {
-Color = Library.Theme.Accent1,
-Thickness = 1,
-Transparency = 0.2,
-Parent = bbox,
-})
-local nameLbl = New("TextLabel", {
-Size = UDim2.new(1, 0, 0, 12),
-Position = UDim2.fromScale(0, 0),
-AnchorPoint = Vector2.new(0, 1),
-Position = UDim2.fromScale(0, -0.02),
-BackgroundTransparency = 1,
-Font = Library.Theme.FontBold,
-TextSize = Library.Theme.FontSize - 2,
-TextColor3 = Library.Theme.Text,
-Text = "springtrap",
-Visible = false,
-ZIndex = 65,
-Parent = f,
-})
-local healthBarBg = New("Frame", {
-Size = UDim2.new(1, 0, 0, 4),
-Position = UDim2.fromScale(0, 1.0),
-AnchorPoint = Vector2.new(0, 0),
-BackgroundColor3 = Color3.fromRGB(30, 30, 34),
-BorderSizePixel = 0,
-Visible = false,
-Parent = f,
-})
-local healthBarFill = New("Frame", {
-Size = UDim2.new(0.72, 0, 1, 0),
-BackgroundTransparency = 0,
-BackgroundColor3 = Library.Theme.Accent1,
-BorderSizePixel = 0,
-Parent = healthBarBg,
-})
-local distLbl = New("TextLabel", {
-Size = UDim2.new(1, 0, 0, 10),
-Position = UDim2.fromScale(0, 1.06),
-BackgroundTransparency = 1,
-Font = Library.Theme.Font,
-TextSize = Library.Theme.FontSize - 3,
-TextColor3 = Library.Theme.TextDim,
-Text = "82m",
-Visible = false,
-ZIndex = 65,
-Parent = f,
-})
+	-- One ViewportFrame per angle, all pointing at the same WorldModel
+	local viewports = {}
+	local renderConn = nil
+	do
+		local vpCount = 0
+		for i, name in ipairs(angleNames) do
+			vpCount = vpCount + 1
+			local f = New("Frame", {
+				Size = UDim2.new(0.3333, -2, 1, 0),
+				Position = UDim2.new((i - 1) * 0.3333, 0, 0, 0),
+				BackgroundTransparency = 1,
+				Parent = mannequin,
+			})
+			angleFrames[name] = f
+			local vp = Instance.new("ViewportFrame")
+			vp.Size = UDim2.fromScale(1, 1)
+			vp.BackgroundTransparency = 1
+			vp.Active = true -- sink mouse input so drag-to-rotate receives events
+		-- ViewportFrame.Ambient must be a Color3 (white = neutral lighting)
+			vp.Ambient = Color3.new(1, 1, 1)
+			vp.LightDirection = Vector3.new(0, -1, -1)
+			vp.Parent = f
+			viewports[name] = vp
 
--- store refs for flag binding
-f:SetAttribute("AngleName", name)
-self["Parts_" .. name] = { Torso = torso, Head = head, EarL = earL, EarR = earR, ArmL = armL, ArmR = armR, LegL = legL, LegR = legR }
-self["Boxes_" .. name] = { BBox = bbox, BBoxStroke = bboxStroke, Name = nameLbl, HealthBg = healthBarBg, HealthFill = healthBarFill, Dist = distLbl }
-end
+			-- Per-angle camera projecting the shared rig at that yaw
+			local cam = Instance.new("Camera")
+			cam.FieldOfView = 40
+			cam.Parent = vp
+			local dist = 13
+			local yaw = angleYaw[name]
+			local camPos = Vector3.new(math.sin(yaw) * dist, 4.2, math.cos(yaw) * dist)
+			cam.CFrame = CFrame.new(camPos, Vector3.new(0, 3.4, 0))					vp.CurrentCamera = cam
+
+					-- Live ESP-style bars drawn around THIS angle
+					local bbox = New("Frame", {
+						Size = UDim2.fromScale(0.92, 0.96),
+						Position = UDim2.fromScale(0.04, 0.02),
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Visible = false,
+						ZIndex = 65,
+						Parent = f,
+					})
+					local bboxStroke = New("UIStroke", {
+						Color = Library.Theme.Accent1,
+						Thickness = 1,
+						Transparency = 0.2,
+						Parent = bbox,
+					})
+					local nameLbl = New("TextLabel", {
+						Size = UDim2.new(1, 0, 0, 12),
+						AnchorPoint = Vector2.new(0, 1),
+						Position = UDim2.fromScale(0, -0.02),
+						BackgroundTransparency = 1,
+						Font = Library.Theme.FontBold,
+						TextSize = Library.Theme.FontSize - 2,
+						TextColor3 = Library.Theme.Text,
+						Text = "springtrap",
+						Visible = false,
+						ZIndex = 65,
+						Parent = f,
+					})
+					local healthBarBg = New("Frame", {
+						Size = UDim2.new(1, 0, 0, 4),
+						Position = UDim2.fromScale(0, 1.0),
+						AnchorPoint = Vector2.new(0, 0),
+						BackgroundColor3 = Color3.fromRGB(30, 30, 34),
+						BorderSizePixel = 0,
+						Visible = false,
+						ZIndex = 65,
+						Parent = f,
+					})
+					local healthBarFill = New("Frame", {
+						Size = UDim2.new(0.72, 0, 1, 0),
+						BackgroundColor3 = Library.Theme.Accent1,
+						BorderSizePixel = 0,
+						ZIndex = 66,
+						Parent = healthBarBg,
+					})
+					local distLbl = New("TextLabel", {
+						Size = UDim2.new(1, 0, 0, 10),
+						Position = UDim2.fromScale(0, 1.06),
+						BackgroundTransparency = 1,
+						Font = Library.Theme.Font,
+						TextSize = Library.Theme.FontSize - 3,
+						TextColor3 = Library.Theme.TextDim,
+						Text = "82m",
+						Visible = false,
+						ZIndex = 65,
+						Parent = f,
+					})
+
+					-- store refs for flag binding
+					f:SetAttribute("AngleName", name)
+					self["Boxes_" .. name] = { BBox = bbox, BBoxStroke = bboxStroke, Name = nameLbl, HealthBg = healthBarBg, HealthFill = healthBarFill, Dist = distLbl }
+				end
+		-- Primary Camera drives WorldModel (needed for ViewportFrames sharing a WorldModel)
+		local sharedCam = Instance.new("Camera")
+		sharedCam.CFrame = CFrame.new(Vector3.new(0, 8, 13), Vector3.new(0, 3.4, 0))
+		sharedCam.Parent = worldModel
+
+		-- Slow idle spin of the single mesh rig, shared by all three viewports.
+		-- Manual yaw (mouse drag on a viewport) adds to the idle spin.
+		renderConn = RunService.RenderStepped:Connect(function(dt)
+			if Library.Unloaded or not mannequin.Parent or not outer.Parent then
+				if renderConn then renderConn:Disconnect() renderConn = nil end
+				return
+			end
+			spin = (spin + dt * 0.55) % (math.pi * 2)
+			local baseCF = CFrame.new(0, 3, 0)
+				* CFrame.Angles(0, spin + manualYaw, 0)
+				* CFrame.Angles(math.rad(manualPitch), 0, 0)
+			rigModel:PivotTo(baseCF * rigPivot)
+		end)
+		table.insert(Library.Connections, renderConn)
+	end
 
 -- Method: toggle preview elements driven by external ESP flags
-function self:Set(flagState)
-flagState = flagState or {}
-for _, angleName in ipairs(angleNames) do
-local parts = self["Parts_" .. angleName]
-local boxes = self["Boxes_" .. angleName]
-if parts and boxes then
-for _, p in pairs(parts) do
-p.BackgroundColor3 = flagState.Color or Library.Theme.Accent1
-p.BackgroundTransparency = flagState.FillTransparency or 0.35
-end
-boxes.BBox.Visible = flagState.Box == true
-boxes.Name.Visible = flagState.Name == true
-boxes.HealthBg.Visible = flagState.Health == true
-boxes.Dist.Visible = flagState.Distance == true
-boxes.Name.Text = flagState.ShowName or "springtrap"
-boxes.Dist.Text = tostring(flagState.ShowDist or "82m")
-boxes.HealthFill.Size = UDim2.new(math.clamp(flagState.HealthValue or 0.72, 0, 1), 0, 1, 0)
-if boxes.BBox.Visible then boxes.BBoxStroke.Color = (flagState.Color or Library.Theme.Accent1) end
-end
-end
+	function self:Set(flagState)
+	flagState = flagState or {}
+	-- Recolor the 3D rig parts live (all angles share one model)
+	local rigColor = flagState.Color or Library.Theme.Accent1
+	for _, p in ipairs(rigModel:GetChildren()) do
+	if p:IsA("BasePart") and p.Name ~= "Root" then
+	p.Color = rigColor
+	end
+	end
+	for _, angleName in ipairs(angleNames) do
+	local boxes = self["Boxes_" .. angleName]
+	if boxes then
+	boxes.BBox.Visible = flagState.Box == true
+	boxes.Name.Visible = flagState.Name == true
+	boxes.HealthBg.Visible = flagState.Health == true
+	boxes.Dist.Visible = flagState.Distance == true
+	boxes.Name.Text = flagState.ShowName or "springtrap"
+	boxes.Dist.Text = tostring(flagState.ShowDist or "82m")
+	boxes.HealthFill.Size = UDim2.new(math.clamp(flagState.HealthValue or 0.72, 0, 1), 0, 1, 0)
+	if boxes.BBox.Visible then boxes.BBoxStroke.Color = (flagState.Color or Library.Theme.Accent1) end
+	end
+	end
 end
 
 -- Drag on header, lock prevents it
@@ -1281,15 +1314,42 @@ local delta = input.Position - dragStart
 outer.Position = UDim2.fromOffset(startPos.X.Offset + delta.X, startPos.Y.Offset + delta.Y)
 end
 end))
-table.insert(Library.Connections, UserInputService.InputEnded:Connect(function(input)
-if input.UserInputType == Enum.UserInputType.MouseButton1 and dragging then
-dragging = false	Library.Flags["__esppreview_pos"] = { X = outer.Position.X.Offset, Y = outer.Position.Y.Offset }
-end
+table.insert(Library.Connections, UserInputService.InputEnded:Connect(function(input)if input.UserInputType == Enum.UserInputType.MouseButton1 and dragging then
+			dragging = false
+			Library.Flags["__esppreview_pos"] = { X = outer.Position.X.Offset, Y = outer.Position.Y.Offset }
+		end
 end))
 
--- Draggable mannequin (inner drag = drag whole panel like sprite pivot)
-mannequin.InputBegan:Connect(function(input)
-if input.UserInputType == Enum.UserInputType.MouseButton1 and not locked then
+-- Drag-to-rotate on the viewports (X = yaw, Y = pitch); adds to idle spin
+	for _, name in ipairs(angleNames) do
+		local vp = viewports[name]
+		if vp then
+			local rotActive, rotStart, startYaw, startPitch = false, nil, 0, 0
+			vp.InputBegan:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton1 then
+					rotActive = true
+					rotStart = input.Position
+					startYaw, startPitch = manualYaw, manualPitch
+				end
+			end)
+			vp.InputEnded:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton1 then
+					rotActive = false
+				end
+			end)
+			table.insert(Library.Connections, UserInputService.InputChanged:Connect(function(input)
+				if rotActive and input.UserInputType == Enum.UserInputType.MouseMovement then
+					local delta = input.Position - rotStart
+					manualYaw = startYaw + (delta.X * 0.01)
+					manualPitch = math.clamp(startPitch + (delta.Y * 0.01), -80, 80)
+				end
+			end))
+		end
+	end
+
+	-- Draggable mannequin canvas (background drag = move whole panel)
+	mannequin.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 and not locked then
 dragging = true
 dragStart = input.Position
 startPos = outer.Position
