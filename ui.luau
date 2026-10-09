@@ -1842,6 +1842,22 @@ function Library:CreateWindow(cfg)
 		})
 		Util.RegisterTheme(activePill, "BackgroundColor3", "AccentColor")
 
+		-- Gradient line on tab button pill for smooth stylish accent
+		New("UIGradient", {
+			Rotation = 90,
+			Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 255, 255)),
+				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+				ColorSequenceKeypoint.new(1.0, Color3.fromRGB(150, 200, 150)),
+			}),
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0.0, 0.2),
+				NumberSequenceKeypoint.new(0.5, 0.0),
+				NumberSequenceKeypoint.new(1.0, 0.3),
+			}),
+			Parent = activePill,
+		})
+
 		local hasIcon = (iconAsset ~= nil and typeof(iconAsset) == "string")
 		local tabIcon = nil
 
@@ -2199,10 +2215,10 @@ function Library:CreateWindow(cfg)
 				if hasCanvasGroup and other.Page:IsA("CanvasGroup") then
 					other.Page.GroupTransparency = 1
 				end
-				Util.Tween(other.Pill, 0.12, { Size = UDim2.new(0, 3, 0, 0) })
-				Util.Tween(other.Label, 0.15, { TextColor3 = Library.Theme.TextDim })
-				if other.Icon then Util.Tween(other.Icon, 0.15, { ImageColor3 = Library.Theme.TextDim }) end
-				Util.Tween(other.Inner, 0.15, { BackgroundColor3 = Library.Theme.ControlTop })
+				Util.Tween(other.Pill, 0.16, { Size = UDim2.new(0, 3, 0, 0) }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+				Util.Tween(other.Label, 0.18, { TextColor3 = Library.Theme.TextDim }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+				if other.Icon then Util.Tween(other.Icon, 0.18, { ImageColor3 = Library.Theme.TextDim }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out) end
+				Util.Tween(other.Inner, 0.18, { BackgroundColor3 = Library.Theme.ControlTop }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 			end
 			
 			-- Smooth fade & glide in new tab
@@ -2216,12 +2232,12 @@ function Library:CreateWindow(cfg)
 			if hasCanvasGroup and tabPage:IsA("CanvasGroup") then
 				tabTweenProps.GroupTransparency = 0
 			end
-			Util.Tween(tabPage, 0.22, tabTweenProps, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+			Util.Tween(tabPage, 0.26, tabTweenProps, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 			
-			Util.Tween(activePill, 0.18, { Size = UDim2.new(0, 3, 0.65, 0) }, Enum.EasingStyle.Quart)
-			Util.Tween(tabLabel, 0.18, { TextColor3 = Library.Theme.Text })
-			if tabIcon then Util.Tween(tabIcon, 0.18, { ImageColor3 = Library.Theme.Accent1 }) end
-			Util.Tween(tabBtnInner, 0.18, { BackgroundColor3 = Library.Theme.GroupTop })
+			Util.Tween(activePill, 0.24, { Size = UDim2.new(0, 3, 0.70, 0) }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+			Util.Tween(tabLabel, 0.20, { TextColor3 = Library.Theme.Text }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+			if tabIcon then Util.Tween(tabIcon, 0.20, { ImageColor3 = Library.Theme.Accent1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out) end
+			Util.Tween(tabBtnInner, 0.20, { BackgroundColor3 = Library.Theme.GroupTop }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 		end
 
 		tabBtnInner.InputBegan:Connect(function(input)
@@ -2814,6 +2830,28 @@ function Library:CreateWindow(cfg)
 				)
 				boxOuter.ZIndex = 2
 
+				-- Soft gradient sheen on checkbox
+				local boxGrad = New("UIGradient", {
+					Rotation = 90,
+					Color = ColorSequence.new({
+						ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 255, 255)),
+						ColorSequenceKeypoint.new(1.0, Color3.fromRGB(190, 190, 190)),
+					}),
+					Parent = boxInner,
+				})
+
+				-- Smooth micro-indicator dot/check inside toggle
+				local checkIndicator = New("Frame", {
+					Size = state and UDim2.fromOffset(6, 6) or UDim2.fromOffset(0, 0),
+					Position = UDim2.fromScale(0.5, 0.5),
+					AnchorPoint = Vector2.new(0.5, 0.5),
+					BackgroundColor3 = Color3.fromRGB(20, 20, 24),
+					BackgroundTransparency = state and 0.15 or 1,
+					BorderSizePixel = 0,
+					ZIndex = 4,
+					Parent = boxInner,
+				})
+
 				local label = New("TextLabel", {
 					Size = UDim2.new(1, -22, 1, 0),
 					Position = UDim2.fromOffset(20, 0),
@@ -2866,15 +2904,17 @@ function Library:CreateWindow(cfg)
 					Library.Flags[flag] = val
 
 					if val then
-						Util.Tween(boxInner, 0.1, { BackgroundColor3 = Library.Theme.Accent1 })
-						Util.Tween(label, 0.1, { TextColor3 = Library.Theme.Text })
+						Util.Tween(boxInner, 0.16, { BackgroundColor3 = Library.Theme.Accent1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+						Util.Tween(checkIndicator, 0.16, { Size = UDim2.fromOffset(6, 6), BackgroundTransparency = 0.15 }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+						Util.Tween(label, 0.16, { TextColor3 = Library.Theme.Text }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 						-- Subtle particle feedback when switching a toggle ON
 						task.delay(0.06, function()
 							if boxOuter and boxOuter.Parent then Library:CreateSuccessBurst(boxOuter) end
 						end)
 					else
-						Util.Tween(boxInner, 0.1, { BackgroundColor3 = offFill })
-						Util.Tween(label, 0.1, { TextColor3 = Library.Theme.TextDim })
+						Util.Tween(boxInner, 0.14, { BackgroundColor3 = offFill }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+						Util.Tween(checkIndicator, 0.14, { Size = UDim2.fromOffset(0, 0), BackgroundTransparency = 1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+						Util.Tween(label, 0.14, { TextColor3 = Library.Theme.TextDim }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 					end
 
 					Util.PlaySound("toggle")
@@ -3083,11 +3123,13 @@ function Library:CreateWindow(cfg)
 				})
 				Util.RegisterTheme(fill, "BackgroundColor3", "AccentColor")
 
+				-- Smooth dual-axis gradient for premium glowing slider look
 				New("UIGradient", {
-					Rotation = 90,
+					Rotation = 0,
 					Color = ColorSequence.new({
-						ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 255, 255)),
-						ColorSequenceKeypoint.new(1.0, Color3.fromRGB(180, 180, 180)),
+						ColorSequenceKeypoint.new(0.0, Color3.fromRGB(180, 240, 180)),
+						ColorSequenceKeypoint.new(0.85, Color3.fromRGB(255, 255, 255)),
+						ColorSequenceKeypoint.new(1.0, Color3.fromRGB(255, 255, 255)),
 					}),
 					Parent = fill,
 				})
@@ -3148,9 +3190,9 @@ function Library:CreateWindow(cfg)
 					Library.Flags[flag] = val
 					valLabel.Text = tostring(val) .. suffix
 					tooltipText.Text = tostring(val)
-					Util.Tween(fill, 0.04, { Size = UDim2.new(x, 0, 1, 0) })
-					Util.Tween(thumb, 0.04, { Position = UDim2.new(x, 0, 0.5, 0) })
-					Util.Tween(tooltip, 0.04, { Position = UDim2.new(x, 0, 0, -3) })
+					Util.Tween(fill, 0.08, { Size = UDim2.new(x, 0, 1, 0) }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+					Util.Tween(thumb, 0.08, { Position = UDim2.new(x, 0, 0.5, 0) }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+					Util.Tween(tooltip, 0.08, { Position = UDim2.new(x, 0, 0, -3) }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 					cb(val)
 				end
 
