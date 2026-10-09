@@ -2336,6 +2336,8 @@ function Library:CreateWindow(cfg)
 				end
 			end
 
+			local Group = {}
+
 			--============================================================================
 			-- FEATURE SETTINGS (GEAR ICON + FLOATING DEEP-MENU)
 			-- Pass Settings = { { Type = "Toggle", Text = "flag", ... }, ... } on any
@@ -2472,8 +2474,6 @@ function Library:CreateWindow(cfg)
 				hookTooltip(gearBtn, cfg.GearTitle or "open feature settings")
 				return gear
 			end
-
-			local Group = {}
 
 			-- COLORPICKER (100% NATIVE SV + HUE GRADIENTS)
 			local function createColorPicker(parentHold, defaultCol, flag, callback)
