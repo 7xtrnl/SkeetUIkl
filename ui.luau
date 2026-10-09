@@ -1110,7 +1110,7 @@ end)
 	local rigModel = nil
 	do
 		local ok, loaded = pcall(function()
-			local objs = game:GetObjects("rbxassetid://" .. tostring(cfg.ModelId or 72805330983335))
+			local objs = game:GetObjects("rbxassetid://" .. tostring(cfg.ModelId or 135539621158951))
 			if typeof(objs) == "table" and objs[1] then return objs[1] end
 			return nil
 		end)
