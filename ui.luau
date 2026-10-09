@@ -2906,6 +2906,40 @@ function Library:CreateWindow(cfg)
 					if val then
 						Util.Tween(boxInner, 0.16, { BackgroundColor3 = Library.Theme.Accent1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 						Util.Tween(checkIndicator, 0.16, { Size = UDim2.fromOffset(6, 6), BackgroundTransparency = 0.15 }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+						-- Fill sweep: a quick accent flash that washes over the box when turning ON
+						do
+							local sweep = New("Frame", {
+								Size = UDim2.fromScale(1, 1),
+								BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+								BackgroundTransparency = 0.55,
+								BorderSizePixel = 0,
+								ZIndex = 5,
+								Parent = boxInner,
+							})
+							local sweepGrad = New("UIGradient", {
+								Rotation = 0,
+								Transparency = NumberSequence.new({
+									NumberSequenceKeypoint.new(0, 0),
+									NumberSequenceKeypoint.new(0.7, 0.35),
+									NumberSequenceKeypoint.new(1, 1),
+								}),
+								Parent = sweep,
+							})
+							local sweepConn
+							sweepConn = RunService.RenderStepped:Connect(function()
+								if not sweep or not sweep.Parent then
+									if sweepConn then sweepConn:Disconnect() end
+									return
+								end
+								local t = (tick() * 2.2) % 1
+								sweepGrad.Offset = Vector2.new(t * 2 - 1, 0)
+							end)
+							Util.Tween(sweep, 0.35, { BackgroundTransparency = 1 })
+							task.delay(0.4, function()
+								if sweepConn then sweepConn:Disconnect() end
+								if sweep then sweep:Destroy() end
+							end)
+						end
 						Util.Tween(label, 0.16, { TextColor3 = Library.Theme.Text }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 						-- Subtle particle feedback when switching a toggle ON
 						task.delay(0.06, function()
@@ -3245,19 +3279,11 @@ function Library:CreateWindow(cfg)
 					Parent = trackOuter,
 				})
 
-			-- Scale helper: grows label text a bit on hover and back on leave (tracks FontSize live)
-			local function applyHoverFont(label, hovered)
-				local base = (Library.Theme and Library.Theme.FontSize) or 12
-				local target = hovered and (base + 1.5) or base
-				Util.Tween(label, 0.12, { TextSize = target }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-			end
-
 			trackBtn.MouseEnter:Connect(function()
 				Util.Tween(thumb, 0.12, { Size = UDim2.fromOffset(6, 14), BackgroundColor3 = Library.Theme.Accent1 })
 				tooltip.Visible = true
 				Util.Tween(tooltip, 0.12, { BackgroundTransparency = 0 })
 				Util.Tween(fill, 0.15, { BackgroundColor3 = Library.Theme.Accent2 })
-				applyHoverFont(label, true)
 				Util.PlaySound("hover")
 			end)
 
@@ -3265,7 +3291,6 @@ function Library:CreateWindow(cfg)
 				if not dragging then
 					Util.Tween(thumb, 0.12, { Size = UDim2.fromOffset(4, 12), BackgroundColor3 = Color3.fromRGB(240, 240, 245) })
 					Util.Tween(fill, 0.15, { BackgroundColor3 = Library.Theme.Accent1 })
-					applyHoverFont(label, false)
 					local out = Util.Tween(tooltip, 0.12, { BackgroundTransparency = 1 })
 					out.Completed:Connect(function() if not dragging then tooltip.Visible = false end end)
 				end
@@ -3516,12 +3541,9 @@ function Library:CreateWindow(cfg)
 
 				itemBtn.MouseEnter:Connect(function()
 					Util.Tween(itemBtn, 0.08, { BackgroundTransparency = 0 })
-					Util.Tween(itemBtn, 0.12, { TextSize = Library.Theme.FontSize + 1.5 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-					Util.PlaySound("hover")
 				end)
 				itemBtn.MouseLeave:Connect(function()
 					Util.Tween(itemBtn, 0.08, { BackgroundTransparency = 1 })
-					Util.Tween(itemBtn, 0.12, { TextSize = Library.Theme.FontSize }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 				end)
 
 							itemBtn.MouseButton1Click:Connect(function()
@@ -3557,19 +3579,37 @@ function Library:CreateWindow(cfg)
 					end
 
 					local targetSize = UDim2.fromOffset(absSize.X, listH + 4)
-					pOuter.Position = UDim2.fromOffset(absPos.X, absPos.Y + absSize.Y + 8)
-					Util.Tween(pOuter, 0.18, { Position = UDim2.fromOffset(absPos.X, absPos.Y + absSize.Y + 2) }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-					Util.Tween(pOuter, 0.16, { BackgroundTransparency = 0 })
-					local sizeTween = Util.Tween(pOuter, 0.16, { Size = targetSize }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-					-- Stagger-reveal each item with a slight cascade
+					local startPos = UDim2.fromOffset(absPos.X, absPos.Y + absSize.Y + 2)
+					pOuter.Position = UDim2.fromOffset(absPos.X, absPos.Y + absSize.Y - 10)
+					pOuter.BackgroundTransparency = 1
+					pInner.BackgroundTransparency = 1
+					Util.Tween(pOuter, 0.22, { Position = startPos, BackgroundTransparency = 0 }, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+					Util.Tween(pInner, 0.22, { BackgroundTransparency = 0 }, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+					local sizeTween = Util.Tween(pOuter, 0.2, { Size = targetSize }, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+					-- Stagger-reveal: items slide down + fade in with a cascade
 					local itemIndex = 0
 					for _, child in ipairs(scroll:GetChildren()) do
 						if child:IsA("TextButton") then
 							itemIndex = itemIndex + 1
+							local targetPos = child.Position
 							child.TextTransparency = 1
-							task.delay(0.04 + itemIndex * 0.02, function()
+							child.Position = UDim2.new(targetPos.X.Scale, targetPos.X.Offset, targetPos.Y.Scale, targetPos.Y.Offset - 8)
+							task.delay(0.03 + itemIndex * 0.025, function()
 								if child and child.Parent then
-									Util.Tween(child, 0.14, { TextTransparency = 0 })
+									Util.Tween(child, 0.18, { TextTransparency = 0, Position = targetPos }, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+								end
+							end)
+						end
+					end
+					-- Flash the rainbow bar on open for extra pop
+					local barFlash = pInner:FindFirstChild("SkeetRainbowBar", true)
+					if barFlash then
+						local coreBar = barFlash:FindFirstChild("CoreRgbBar")
+						if coreBar then
+							Util.Tween(coreBar, 0.25, { Size = UDim2.new(1, 0, 0, 3) })
+							task.delay(0.3, function()
+								if coreBar and coreBar.Parent then
+									Util.Tween(coreBar, 0.3, { Size = UDim2.new(1, 0, 0, 1) })
 								end
 							end)
 						end
