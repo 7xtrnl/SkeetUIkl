@@ -1267,25 +1267,10 @@ function Library:CreateWindow(cfg)
 		Parent = sidebar,
 	})
 
-	-- Ambient soft glow aura behind logo
-	local brandGlow = New("ImageLabel", {
-		Size = UDim2.fromOffset(84, 84),
-		Position = UDim2.new(0.5, -42, 0.5, -42),
-		BackgroundTransparency = 1,
-		Image = "rbxassetid://18245826428",
-		ScaleType = Enum.ScaleType.Slice,
-		SliceCenter = Rect.new(21, 21, 79, 79),
-		ImageColor3 = Library.Theme.Accent1,
-		ImageTransparency = 0.84,
-		BorderSizePixel = 0,
-		ZIndex = 11,
-		Parent = brandingSection,
-	})
-	Util.RegisterTheme(brandGlow, "ImageColor3", "AccentColor")
-
 	local brandIcon = New("ImageLabel", {
 		Size = UDim2.fromOffset(72, 72),
-		Position = UDim2.new(0.5, -36, 0.5, -36),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		AnchorPoint = Vector2.new(0.5, 0.5),
 		BackgroundTransparency = 1,
 		Image = (BrandSpritesheet.Loaded and BrandSpritesheet.Uri) or (BrandGifLoaded and BrandGifFrames[1]) or Library.Icons.Shield,
 		ImageColor3 = Color3.fromRGB(255, 255, 255),
@@ -1293,6 +1278,21 @@ function Library:CreateWindow(cfg)
 		ZIndex = 12,
 		Parent = brandingSection,
 	})
+
+	-- Gentle breathing/pulse scale effect (smoothly scales between ~0.90 and 1.05)
+	local brandScale = New("UIScale", {
+		Scale = 1,
+		Parent = brandIcon,
+	})
+	task.spawn(function()
+		while brandIcon and brandIcon.Parent do
+			-- Smooth sine pulse: 1.0 base + 0.08 sine wave (~0.92 to 1.08 scale)
+			local t = tick()
+			local scale = 1 + math.sin(t * 2.2) * 0.08
+			brandScale.Scale = scale
+			RunService.RenderStepped:Wait()
+		end
+	end)
 
 	-- Animated logo player engine (Spritesheet with 89 frames or multi-frame sequence)
 	if BrandSpritesheet.Loaded then
