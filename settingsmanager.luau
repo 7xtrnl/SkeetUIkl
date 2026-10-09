@@ -1,6 +1,6 @@
 --[[
 	══════════════════════════════════════════════════════════════════════════════
-	  SKEETWARE SETTINGS MANAGER (Linoria-Style Modular Companion)
+	  axiomWARE SETTINGS MANAGER (Linoria-Style Modular Companion)
 	  • SaveManager: Save, Load, Overwrite, Auto-Load, Delete & Refresh Configs
 	  • ThemeManager: "FontColor", "MainColor", "AccentColor", "BackgroundColor", "OutlineColor"
 	  • Native file operations: writefile, readfile, listfiles, isfolder, makefolder, delfile
@@ -10,7 +10,7 @@
 local HttpService = game:GetService("HttpService")
 
 local SettingsManager = {
-	Folder = "SkeetwareConfigs",
+	Folder = "aximon",
 	Library = nil,
 	SaveManager = {},
 	ThemeManager = {},
@@ -339,14 +339,14 @@ end
 local ThemeManager = SettingsManager.ThemeManager
 
 ThemeManager.BuiltInThemes = {
-	["Default Skeet"] = {
+	["Default axiom"] = {
 		FontColor       = Color3.fromRGB(230, 230, 235),
 		MainColor       = Color3.fromRGB(24, 24, 27),
 		AccentColor     = Color3.fromRGB(168, 219, 95),
 		BackgroundColor = Color3.fromRGB(28, 28, 32),
 		OutlineColor    = Color3.fromRGB(0, 0, 0),
 	},
-	["Skeet Light"] = {
+	["axiom Light"] = {
 		FontColor       = Color3.fromRGB(40, 40, 45),
 		MainColor       = Color3.fromRGB(225, 225, 230),
 		AccentColor     = Color3.fromRGB(30, 120, 210),
@@ -388,7 +388,7 @@ end
 --============================================================================--
 -- CUSTOM THEME PRESETS (save / load / delete own combinations)
 --============================================================================--
-local ThemePresetFolder = "SkeetwareThemes"
+local ThemePresetFolder = "axiomwareThemes"
 
 function ThemeManager:GetThemePresetFolder()
 	return ThemePresetFolder
@@ -724,7 +724,7 @@ function ThemeManager:BuildThemeSection(groupbox)
 	groupbox:AddDropdown({
 		Text = "Theme Preset",
 		List = themeNames,
-		Default = "Default Skeet",
+		Default = "Default axiom",
 		Flag = "__theme_preset_dropdown",
 		Callback = function(themeName)
 			local preset = self.BuiltInThemes[themeName]
@@ -754,7 +754,7 @@ function ThemeManager:BuildThemeSection(groupbox)
 		Default = false,
 		Flag = "__theme_lightmode",
 		Callback = function(state)
-			local preset = self.BuiltInThemes[state and "Skeet Light" or "Default Skeet"]
+			local preset = self.BuiltInThemes[state and "axiom Light" or "Default axiom"]
 			if preset then
 				self:ApplyTheme(preset)
 				for prop, col in pairs(preset) do
@@ -1133,7 +1133,7 @@ function ThemeManager:BuildThemeSection(groupbox)
 			if lib then
 				lib:Notify({ Title = "Settings Manager", Text = "Settings manager opened!", Duration = 1 })
 			end
-			local sWindow = lib:CreateWindow({ Title = "Skeetware Settings", Size = UDim2.fromOffset(520, 420) })
+			local sWindow = lib:CreateWindow({ Title = "axiomware Settings", Size = UDim2.fromOffset(520, 420) })
 			settingsWindow = sWindow
 			SettingsManager._SettingsWindow = sWindow
 			local sTab = sWindow:AddTab("Settings", lib.Icons and lib.Icons.Settings or nil)
