@@ -1,4 +1,4 @@
-xtrnl.cc--[[
+--[[
 	══════════════════════════════════════════════════════════════════════════════
 	  axiom SETTINGS MANAGER (Linoria-Style Modular Companion)
 	  • SaveManager: Save, Load, Overwrite, Auto-Load, Delete & Refresh Configs
