@@ -1,6 +1,6 @@
---[[
+xtrnl.cc--[[
 	══════════════════════════════════════════════════════════════════════════════
-	  axiomWARE SETTINGS MANAGER (Linoria-Style Modular Companion)
+	  axiom SETTINGS MANAGER (Linoria-Style Modular Companion)
 	  • SaveManager: Save, Load, Overwrite, Auto-Load, Delete & Refresh Configs
 	  • ThemeManager: "FontColor", "MainColor", "AccentColor", "BackgroundColor", "OutlineColor"
 	  • Native file operations: writefile, readfile, listfiles, isfolder, makefolder, delfile
@@ -10,7 +10,7 @@
 local HttpService = game:GetService("HttpService")
 
 local SettingsManager = {
-	Folder = "aximon",
+	Folder = "Axiom",
 	Library = nil,
 	SaveManager = {},
 	ThemeManager = {},
@@ -388,7 +388,7 @@ end
 --============================================================================--
 -- CUSTOM THEME PRESETS (save / load / delete own combinations)
 --============================================================================--
-local ThemePresetFolder = "axiomwareThemes"
+local ThemePresetFolder = "axiomThemes"
 
 function ThemeManager:GetThemePresetFolder()
 	return ThemePresetFolder
@@ -740,14 +740,6 @@ function ThemeManager:BuildThemeSection(groupbox)
 		end,
 	})
 	
-	-- Add a button to preview current theme
-	groupbox:AddButton({
-		Text = "Preview Current Theme",
-		Callback = function()
-			showThemePreview(currentCustomTheme)
-		end,
-	})
-
 	-- Dark / Light Mode quick switch between preset dark & light themes
 	groupbox:AddToggle({
 		Text = "Light Mode",
@@ -1133,7 +1125,7 @@ function ThemeManager:BuildThemeSection(groupbox)
 			if lib then
 				lib:Notify({ Title = "Settings Manager", Text = "Settings manager opened!", Duration = 1 })
 			end
-			local sWindow = lib:CreateWindow({ Title = "axiomware Settings", Size = UDim2.fromOffset(520, 420) })
+			local sWindow = lib:CreateWindow({ Title = "axiom Settings", Size = UDim2.fromOffset(520, 420) })
 			settingsWindow = sWindow
 			SettingsManager._SettingsWindow = sWindow
 			local sTab = sWindow:AddTab("Settings", lib.Icons and lib.Icons.Settings or nil)
