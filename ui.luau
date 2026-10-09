@@ -83,16 +83,28 @@ pcall(function()
 	local getAsset = getcustomasset or getsynasset
 	if typeof(isfile) == "function" and typeof(writefile) == "function" and getAsset then
 		-- 1. Check for compiled spritesheet first (fastest, smoothest, lowest memory)
+		local sheet96Path = AxiomAssets .. "/logosheet_96.png"
 		local sheetPath = AxiomAssets .. "/logosheet.png"
-		if not isfile(sheetPath) then
+		if not isfile(sheetPath) and not isfile(sheet96Path) then
 			pcall(function()
 				writefile(sheetPath, game:HttpGet("https://raw.githubusercontent.com/7xtrnl/SkeetUIkl/main/logosheet.png"))
 			end)
 		end
-		if isfile(sheetPath) then
+		if isfile(sheet96Path) then
+			local sheetUri = getAsset(sheet96Path)
+			if sheetUri then
+				BrandSpritesheet.Uri = sheetUri
+				BrandSpritesheet.FrameWidth = 96
+				BrandSpritesheet.FrameHeight = 96
+				BrandSpritesheet.Loaded = true
+				BrandGifLoaded = true
+			end
+		elseif isfile(sheetPath) then
 			local sheetUri = getAsset(sheetPath)
 			if sheetUri then
 				BrandSpritesheet.Uri = sheetUri
+				BrandSpritesheet.FrameWidth = 64
+				BrandSpritesheet.FrameHeight = 64
 				BrandSpritesheet.Loaded = true
 				BrandGifLoaded = true
 			end
@@ -371,8 +383,15 @@ function Util.AddGlow(inst, color, thickness, transparency)
 	return stroke
 end
 
+local hasCanvasGroup = false
+pcall(function()
+	local cg = Instance.new("CanvasGroup")
+	cg:Destroy()
+	hasCanvasGroup = true
+end)
+
 function Util.CreateHardBorder(parent, size, pos, bgTop, bgBottom, isMainWin)
-	local outer = New("Frame", {
+	local outer = New((isMainWin and hasCanvasGroup) and "CanvasGroup" or "Frame", {
 		Size = size or UDim2.fromScale(1, 1),
 		Position = pos or UDim2.fromScale(0, 0),
 		BackgroundColor3 = Library.Theme.OuterBorder,
@@ -451,17 +470,64 @@ function Util.AddSkeetGradientBar(parent, height)
 
 	local glowGrads = {}
 
-	-- Layered downward atmospheric glow wash (pure native, zero image artifacts)
-	local glowLayers = {
-		{ h = barH + 4,  y = -1, trans = 0.50, z = 7 },
-		{ h = barH + 8,  y = 0,  trans = 0.68, z = 6 },
-		{ h = barH + 16, y = 0,  trans = 0.82, z = 5 },
-		{ h = barH + 26, y = 0,  trans = 0.92, z = 4 },
+	-- 1. Outer deep ambient bloom wash (silky 9-slice soft neon glow)
+	local glowBloomOuter = New("ImageLabel", {
+		Name = "RgbGlowBloomOuter",
+		Size = UDim2.new(1, 36, 0, barH + 34),
+		Position = UDim2.fromOffset(-18, -14),
+		BackgroundTransparency = 1,
+		Image = "rbxassetid://18245826428",
+		ScaleType = Enum.ScaleType.Slice,
+		SliceCenter = Rect.new(21, 21, 79, 79),
+		ImageTransparency = 0.58,
+		BorderSizePixel = 0,
+		ZIndex = 4,
+		ClipsDescendants = false,
+		Parent = barContainer,
+	})
+	local bloomGradOuter = New("UIGradient", {
+		Rotation = 0,
+		Color = makeChromaSequence(0),
+		Parent = glowBloomOuter,
+	})
+	table.insert(glowGrads, bloomGradOuter)
+
+	-- 2. Inner radiant neon bloom (closer, brighter aura)
+	local glowBloomInner = New("ImageLabel", {
+		Name = "RgbGlowBloomInner",
+		Size = UDim2.new(1, 18, 0, barH + 18),
+		Position = UDim2.fromOffset(-9, -6),
+		BackgroundTransparency = 1,
+		Image = "rbxassetid://18245826428",
+		ScaleType = Enum.ScaleType.Slice,
+		SliceCenter = Rect.new(21, 21, 79, 79),
+		ImageTransparency = 0.38,
+		BorderSizePixel = 0,
+		ZIndex = 5,
+		ClipsDescendants = false,
+		Parent = barContainer,
+	})
+	local bloomGradInner = New("UIGradient", {
+		Rotation = 0,
+		Color = makeChromaSequence(0),
+		Parent = glowBloomInner,
+	})
+	table.insert(glowGrads, bloomGradInner)
+
+	-- 3. Layered clean downward atmospheric gradient wash (exponential decay, zero harsh steps)
+	local glowAtmosphere = {
+		{ h = barH + 2,  y = 0, trans = 0.35, z = 8 },
+		{ h = barH + 5,  y = 0, trans = 0.50, z = 7 },
+		{ h = barH + 9,  y = 0, trans = 0.65, z = 6 },
+		{ h = barH + 15, y = 0, trans = 0.77, z = 5 },
+		{ h = barH + 24, y = 0, trans = 0.86, z = 4 },
+		{ h = barH + 36, y = 0, trans = 0.93, z = 3 },
+		{ h = barH + 52, y = 0, trans = 0.97, z = 2 },
 	}
 
-	for _, cfg in ipairs(glowLayers) do
+	for _, cfg in ipairs(glowAtmosphere) do
 		local layer = New("Frame", {
-			Name = "RgbGlowLayer",
+			Name = "RgbAtmosphereLayer",
 			Size = UDim2.new(1, 0, 0, cfg.h),
 			Position = UDim2.fromOffset(0, cfg.y),
 			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
@@ -479,7 +545,7 @@ function Util.AddSkeetGradientBar(parent, height)
 		table.insert(glowGrads, g)
 	end
 
-	-- Core Sharp Neon RGB Bar
+	-- 4. Core Razor-Sharp Neon RGB Bar
 	local coreBar = New("Frame", {
 		Name = "CoreRgbBar",
 		Size = UDim2.new(1, 0, 0, barH),
@@ -497,13 +563,25 @@ function Util.AddSkeetGradientBar(parent, height)
 	})
 	table.insert(glowGrads, coreGrad)
 
-	-- Top Crystal Razor Gloss Line
+	-- 5. Top Crystal Razor Gloss Line
 	New("Frame", {
 		Name = "RgbGlossLine",
 		Size = UDim2.new(1, 0, 0, 1),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-		BackgroundTransparency = 0.50,
+		BackgroundTransparency = 0.35,
+		BorderSizePixel = 0,
+		ZIndex = 16,
+		Parent = coreBar,
+	})
+
+	-- 6. Bottom Razor Shadow (crisp separation line)
+	New("Frame", {
+		Name = "RgbBottomEdge",
+		Size = UDim2.new(1, 0, 0, 1),
+		Position = UDim2.fromOffset(0, barH - 1),
+		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+		BackgroundTransparency = 0.70,
 		BorderSizePixel = 0,
 		ZIndex = 16,
 		Parent = coreBar,
@@ -519,7 +597,7 @@ end
 -- Ambient Live Flowing RGB Chroma Engine
 table.insert(Library.Connections, RunService.RenderStepped:Connect(function()
 	if Library.Unloaded or not Library.RainbowAnimation or not Library.RainbowGradients then return end
-	local shift = (tick() * 0.18) % 1
+	local shift = (tick() * 0.13) % 1
 	local chroma = makeChromaSequence(shift)
 
 	for i = #Library.RainbowGradients, 1, -1 do
@@ -1188,7 +1266,7 @@ function Library:CreateWindow(cfg)
 	})
 
 	local sidebarFade = New("Frame", {
-		Size = UDim2.new(1, 0, 0, 72),
+		Size = UDim2.new(1, 0, 0, 96),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundColor3 = Library.Theme.Accent1,
 		BackgroundTransparency = 0.94,
@@ -1225,18 +1303,34 @@ function Library:CreateWindow(cfg)
 		Parent = sidebarEdge,
 	})
 
-	-- Branding section with animated Axiom logo
+	-- Branding section with enlarged animated Axiom logo
 	local brandingSection = New("Frame", {
-		Size = UDim2.new(1, 0, 0, 56),
+		Size = UDim2.new(1, 0, 0, 82),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundTransparency = 1,
 		ZIndex = 11,
 		Parent = sidebar,
 	})
 
+	-- Ambient soft glow aura behind logo
+	local brandGlow = New("ImageLabel", {
+		Size = UDim2.fromOffset(84, 84),
+		Position = UDim2.new(0.5, -42, 0.5, -42),
+		BackgroundTransparency = 1,
+		Image = "rbxassetid://18245826428",
+		ScaleType = Enum.ScaleType.Slice,
+		SliceCenter = Rect.new(21, 21, 79, 79),
+		ImageColor3 = Library.Theme.Accent1,
+		ImageTransparency = 0.84,
+		BorderSizePixel = 0,
+		ZIndex = 11,
+		Parent = brandingSection,
+	})
+	Util.RegisterTheme(brandGlow, "ImageColor3", "AccentColor")
+
 	local brandIcon = New("ImageLabel", {
-		Size = UDim2.new(1, -12, 1, -8),
-		Position = UDim2.fromOffset(6, 4),
+		Size = UDim2.fromOffset(72, 72),
+		Position = UDim2.new(0.5, -36, 0.5, -36),
 		BackgroundTransparency = 1,
 		Image = (BrandSpritesheet.Loaded and BrandSpritesheet.Uri) or (BrandGifLoaded and BrandGifFrames[1]) or Library.Icons.Shield,
 		ImageColor3 = Color3.fromRGB(255, 255, 255),
@@ -1277,8 +1371,8 @@ function Library:CreateWindow(cfg)
 
 	-- Tab list in sidebar
 	local sidebarTabList = New("Frame", {
-		Size = UDim2.new(1, 0, 1, -66),
-		Position = UDim2.fromOffset(0, 60),
+		Size = UDim2.new(1, 0, 1, -92),
+		Position = UDim2.fromOffset(0, 86),
 		BackgroundTransparency = 1,
 		ZIndex = 11,
 		Parent = sidebar,
@@ -1410,32 +1504,43 @@ function Library:CreateWindow(cfg)
 			if not winOuter or not winOuter.Parent then return end
 			Library.Open = not Library.Open
 			if Library.Open then
-				-- Show blur overlay
+				-- Show blur overlay with smooth fade
 				blurOverlay.Visible = true
 				blurOverlay.BackgroundTransparency = 1
-				Util.Tween(blurOverlay, 0.25, { BackgroundTransparency = 0.55 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+				Util.Tween(blurOverlay, 0.28, { BackgroundTransparency = 0.55 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 				if blurEffect then
 					blurEffect.Size = 0
-					Util.Tween(blurEffect, 0.3, { Size = 14 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+					Util.Tween(blurEffect, 0.32, { Size = 14 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 				end
 				if snowLayer then snowLayer.Visible = true end
 
 				winOuter.Visible = true
 				winScale.Scale = 0.94
 				winOuter.Size = winSize
-				Util.Tween(winScale, 0.2, { Scale = 1 }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+
+				if hasCanvasGroup and winOuter:IsA("CanvasGroup") then
+					winOuter.GroupTransparency = 1
+					Util.Tween(winOuter, 0.28, { GroupTransparency = 0 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+				end
+				Util.Tween(winScale, 0.28, { Scale = 1 }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 				Util.PlaySound("open")
 			else
-				-- Hide blur overlay
-				Util.Tween(blurOverlay, 0.2, { BackgroundTransparency = 1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+				-- Hide blur overlay with smooth fade
+				Util.Tween(blurOverlay, 0.22, { BackgroundTransparency = 1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 				if blurEffect then
-					Util.Tween(blurEffect, 0.25, { Size = 0 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+					Util.Tween(blurEffect, 0.22, { Size = 0 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 				end
 
-				local t = Util.Tween(winScale, 0.15, { Scale = 0.94 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+				if hasCanvasGroup and winOuter:IsA("CanvasGroup") then
+					Util.Tween(winOuter, 0.20, { GroupTransparency = 1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+				end
+				local t = Util.Tween(winScale, 0.20, { Scale = 0.94 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 				t.Completed:Connect(function()
 					winOuter.Visible = false
 					winScale.Scale = 1
+					if hasCanvasGroup and winOuter:IsA("CanvasGroup") then
+						winOuter.GroupTransparency = 0
+					end
 					blurOverlay.Visible = false
 					if snowLayer then snowLayer.Visible = false end
 				end)
@@ -1811,9 +1916,10 @@ function Library:CreateWindow(cfg)
 		})
 		Util.RegisterTheme(tabLabel, "TextColor3", "FontColor")
 
-		local tabPage = New("Frame", {
+		local tabPage = New(hasCanvasGroup and "CanvasGroup" or "Frame", {
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
 			Visible = false,
 			Parent = contentHolder,
 		})
@@ -2133,22 +2239,29 @@ function Library:CreateWindow(cfg)
 			end
 			
 			-- Hide every other tab page immediately (no blocking :Wait()).
-			-- A blocking tween inside a UI input callback deadlocks/errors
-			-- and is what broke tab switching.
 			for _, other in ipairs(Window.Tabs) do
 				other.Page.Visible = false
+				if hasCanvasGroup and other.Page:IsA("CanvasGroup") then
+					other.Page.GroupTransparency = 1
+				end
 				Util.Tween(other.Pill, 0.12, { Size = UDim2.new(0, 3, 0, 0) })
 				Util.Tween(other.Label, 0.15, { TextColor3 = Library.Theme.TextDim })
 				if other.Icon then Util.Tween(other.Icon, 0.15, { ImageColor3 = Library.Theme.TextDim }) end
 				Util.Tween(other.Inner, 0.15, { BackgroundColor3 = Library.Theme.ControlTop })
 			end
 			
-			-- Slide in new tab
-			tabPage.Position = UDim2.fromOffset(0, 10)
+			-- Smooth fade & glide in new tab
+			tabPage.Position = UDim2.fromOffset(0, 8)
+			if hasCanvasGroup and tabPage:IsA("CanvasGroup") then
+				tabPage.GroupTransparency = 1
+			end
 			tabPage.Visible = true
-			Util.Tween(tabPage, 0.2, { 
-				Position = UDim2.fromOffset(0, 0)
-			}, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+
+			local tabTweenProps = { Position = UDim2.fromOffset(0, 0) }
+			if hasCanvasGroup and tabPage:IsA("CanvasGroup") then
+				tabTweenProps.GroupTransparency = 0
+			end
+			Util.Tween(tabPage, 0.22, tabTweenProps, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 			
 			Util.Tween(activePill, 0.18, { Size = UDim2.new(0, 3, 0.65, 0) }, Enum.EasingStyle.Quart)
 			Util.Tween(tabLabel, 0.18, { TextColor3 = Library.Theme.Text })
@@ -3673,14 +3786,24 @@ function Library:CreateWindow(cfg)
 		return Tab
 	end
 
-	-- Menu starts open → dim/blur the game behind it and start the snowfall
+	-- Menu starts open → animate clean initial fade in
 	if Library.Open then
+		winOuter.Visible = true
+		winScale.Scale = 0.94
+		if hasCanvasGroup and winOuter:IsA("CanvasGroup") then
+			winOuter.GroupTransparency = 1
+			Util.Tween(winOuter, 0.35, { GroupTransparency = 0 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+		end
+		Util.Tween(winScale, 0.35, { Scale = 1 }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+
 		if blurOverlay then
 			blurOverlay.Visible = true
-			blurOverlay.BackgroundTransparency = 0.55
+			blurOverlay.BackgroundTransparency = 1
+			Util.Tween(blurOverlay, 0.35, { BackgroundTransparency = 0.55 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 		end
 		if blurEffect then
-			blurEffect.Size = 14
+			blurEffect.Size = 0
+			Util.Tween(blurEffect, 0.35, { Size = 14 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 		end
 		if snowLayer then
 			snowLayer.Visible = true
