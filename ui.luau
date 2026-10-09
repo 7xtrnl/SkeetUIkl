@@ -3123,14 +3123,14 @@ function Library:CreateWindow(cfg)
 				})
 				Util.RegisterTheme(fill, "BackgroundColor3", "AccentColor")
 
-				-- Smooth dual-axis gradient for premium glowing slider look
+				-- Gradient that spans the fill so colors read positionally.
 				New("UIGradient", {
 					Rotation = 0,
 					Color = ColorSequence.new({
-						ColorSequenceKeypoint.new(0.0, Color3.fromRGB(180, 240, 180)),
-						ColorSequenceKeypoint.new(0.85, Color3.fromRGB(255, 255, 255)),
-						ColorSequenceKeypoint.new(1.0, Color3.fromRGB(255, 255, 255)),
+						ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 255, 255)),
+						ColorSequenceKeypoint.new(1.0, Color3.fromRGB(190, 210, 255)),
 					}),
+					Offset = Vector2.new(0, 0),
 					Parent = fill,
 				})
 
@@ -3245,20 +3245,31 @@ function Library:CreateWindow(cfg)
 					Parent = trackOuter,
 				})
 
-				trackBtn.MouseEnter:Connect(function()
-					Util.Tween(thumb, 0.12, { Size = UDim2.fromOffset(6, 14), BackgroundColor3 = Library.Theme.Accent1 })
-					tooltip.Visible = true
-					Util.Tween(tooltip, 0.12, { BackgroundTransparency = 0 })
-					Util.PlaySound("hover")
-				end)
+			-- Scale helper: grows label text a bit on hover and back on leave (tracks FontSize live)
+			local function applyHoverFont(label, hovered)
+				local base = (Library.Theme and Library.Theme.FontSize) or 12
+				local target = hovered and (base + 1.5) or base
+				Util.Tween(label, 0.12, { TextSize = target }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+			end
 
-				trackBtn.MouseLeave:Connect(function()
-					if not dragging then
-						Util.Tween(thumb, 0.12, { Size = UDim2.fromOffset(4, 12), BackgroundColor3 = Color3.fromRGB(240, 240, 245) })
-						local out = Util.Tween(tooltip, 0.12, { BackgroundTransparency = 1 })
-						out.Completed:Connect(function() if not dragging then tooltip.Visible = false end end)
-					end
-				end)
+			trackBtn.MouseEnter:Connect(function()
+				Util.Tween(thumb, 0.12, { Size = UDim2.fromOffset(6, 14), BackgroundColor3 = Library.Theme.Accent1 })
+				tooltip.Visible = true
+				Util.Tween(tooltip, 0.12, { BackgroundTransparency = 0 })
+				Util.Tween(fill, 0.15, { BackgroundColor3 = Library.Theme.Accent2 })
+				applyHoverFont(label, true)
+				Util.PlaySound("hover")
+			end)
+
+			trackBtn.MouseLeave:Connect(function()
+				if not dragging then
+					Util.Tween(thumb, 0.12, { Size = UDim2.fromOffset(4, 12), BackgroundColor3 = Color3.fromRGB(240, 240, 245) })
+					Util.Tween(fill, 0.15, { BackgroundColor3 = Library.Theme.Accent1 })
+					applyHoverFont(label, false)
+					local out = Util.Tween(tooltip, 0.12, { BackgroundTransparency = 1 })
+					out.Completed:Connect(function() if not dragging then tooltip.Visible = false end end)
+				end
+			end)
 
 				trackBtn.MouseButton1Down:Connect(function()
 					dragging = true
@@ -3437,6 +3448,8 @@ function Library:CreateWindow(cfg)
 					pOuter.ClipsDescendants = true
 					pOuter.ZIndex = 9995
 					Util.AddSkeetGradientBar(pInner, 1)
+					-- Slide-in entrance: drop slightly above final spot and fade in
+					pOuter.BackgroundTransparency = 1
 					popOuter = pOuter
 
 					local scroll = New("ScrollingFrame", {
@@ -3501,12 +3514,15 @@ function Library:CreateWindow(cfg)
 								Util.RegisterTheme(itemCheck, "ImageColor3", "AccentColor")
 							end
 
-							itemBtn.MouseEnter:Connect(function()
-								Util.Tween(itemBtn, 0.08, { BackgroundTransparency = 0 })
-							end)
-							itemBtn.MouseLeave:Connect(function()
-								Util.Tween(itemBtn, 0.08, { BackgroundTransparency = 1 })
-							end)
+				itemBtn.MouseEnter:Connect(function()
+					Util.Tween(itemBtn, 0.08, { BackgroundTransparency = 0 })
+					Util.Tween(itemBtn, 0.12, { TextSize = Library.Theme.FontSize + 1.5 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+					Util.PlaySound("hover")
+				end)
+				itemBtn.MouseLeave:Connect(function()
+					Util.Tween(itemBtn, 0.08, { BackgroundTransparency = 1 })
+					Util.Tween(itemBtn, 0.12, { TextSize = Library.Theme.FontSize }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+				end)
 
 							itemBtn.MouseButton1Click:Connect(function()
 								-- Subtle particle feedback on dropdown selection
@@ -3540,7 +3556,24 @@ function Library:CreateWindow(cfg)
 						end
 					end
 
-					Util.Tween(pOuter, 0.16, { Size = UDim2.fromOffset(absSize.X, listH + 4) }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+					local targetSize = UDim2.fromOffset(absSize.X, listH + 4)
+					pOuter.Position = UDim2.fromOffset(absPos.X, absPos.Y + absSize.Y + 8)
+					Util.Tween(pOuter, 0.18, { Position = UDim2.fromOffset(absPos.X, absPos.Y + absSize.Y + 2) }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+					Util.Tween(pOuter, 0.16, { BackgroundTransparency = 0 })
+					local sizeTween = Util.Tween(pOuter, 0.16, { Size = targetSize }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+					-- Stagger-reveal each item with a slight cascade
+					local itemIndex = 0
+					for _, child in ipairs(scroll:GetChildren()) do
+						if child:IsA("TextButton") then
+							itemIndex = itemIndex + 1
+							child.TextTransparency = 1
+							task.delay(0.04 + itemIndex * 0.02, function()
+								if child and child.Parent then
+									Util.Tween(child, 0.14, { TextTransparency = 0 })
+								end
+							end)
+						end
+					end
 				end
 
 				local clickBtn = New("TextButton", {
