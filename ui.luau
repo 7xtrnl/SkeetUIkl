@@ -457,9 +457,11 @@ end
 function Util.AddSkeetGradientBar(parent, height)
 	local barH = height or 2
 
+	-- Taller container so soft glow can expand downward without being clipped by ancestors
+	local containerH = barH + 56
 	local barContainer = New("Frame", {
 		Name = "SkeetRainbowBar",
-		Size = UDim2.new(1, 0, 0, barH),
+		Size = UDim2.new(1, 0, 0, containerH),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
@@ -470,16 +472,16 @@ function Util.AddSkeetGradientBar(parent, height)
 
 	local glowGrads = {}
 
-	-- 1. Outer deep ambient bloom wash (silky 9-slice soft neon glow)
+	-- 1. Outer deep ambient bloom (mostly downward so it stays inside the window bounds)
 	local glowBloomOuter = New("ImageLabel", {
 		Name = "RgbGlowBloomOuter",
-		Size = UDim2.new(1, 36, 0, barH + 34),
-		Position = UDim2.fromOffset(-18, -14),
+		Size = UDim2.new(1, 48, 0, barH + 48),
+		Position = UDim2.fromOffset(-24, -6), -- reduced upward overhang to avoid CanvasGroup / parent clipping
 		BackgroundTransparency = 1,
 		Image = "rbxassetid://18245826428",
 		ScaleType = Enum.ScaleType.Slice,
 		SliceCenter = Rect.new(21, 21, 79, 79),
-		ImageTransparency = 0.58,
+		ImageTransparency = 0.32, -- less transparent = stronger visible glow
 		BorderSizePixel = 0,
 		ZIndex = 4,
 		ClipsDescendants = false,
@@ -492,16 +494,16 @@ function Util.AddSkeetGradientBar(parent, height)
 	})
 	table.insert(glowGrads, bloomGradOuter)
 
-	-- 2. Inner radiant neon bloom (closer, brighter aura)
+	-- 2. Inner radiant neon bloom (brighter core aura)
 	local glowBloomInner = New("ImageLabel", {
 		Name = "RgbGlowBloomInner",
-		Size = UDim2.new(1, 18, 0, barH + 18),
-		Position = UDim2.fromOffset(-9, -6),
+		Size = UDim2.new(1, 24, 0, barH + 28),
+		Position = UDim2.fromOffset(-12, -4),
 		BackgroundTransparency = 1,
 		Image = "rbxassetid://18245826428",
 		ScaleType = Enum.ScaleType.Slice,
 		SliceCenter = Rect.new(21, 21, 79, 79),
-		ImageTransparency = 0.38,
+		ImageTransparency = 0.18, -- less transparent
 		BorderSizePixel = 0,
 		ZIndex = 5,
 		ClipsDescendants = false,
@@ -514,15 +516,15 @@ function Util.AddSkeetGradientBar(parent, height)
 	})
 	table.insert(glowGrads, bloomGradInner)
 
-	-- 3. Layered clean downward atmospheric gradient wash (exponential decay, zero harsh steps)
+	-- 3. Soft layered downward atmospheric wash (lower transparency = smoother continuous falloff)
 	local glowAtmosphere = {
-		{ h = barH + 2,  y = 0, trans = 0.35, z = 8 },
-		{ h = barH + 5,  y = 0, trans = 0.50, z = 7 },
-		{ h = barH + 9,  y = 0, trans = 0.65, z = 6 },
-		{ h = barH + 15, y = 0, trans = 0.77, z = 5 },
-		{ h = barH + 24, y = 0, trans = 0.86, z = 4 },
-		{ h = barH + 36, y = 0, trans = 0.93, z = 3 },
-		{ h = barH + 52, y = 0, trans = 0.97, z = 2 },
+		{ h = barH + 3,  y = 0, trans = 0.22, z = 8 },
+		{ h = barH + 7,  y = 0, trans = 0.38, z = 7 },
+		{ h = barH + 13, y = 0, trans = 0.52, z = 6 },
+		{ h = barH + 21, y = 0, trans = 0.66, z = 5 },
+		{ h = barH + 32, y = 0, trans = 0.78, z = 4 },
+		{ h = barH + 46, y = 0, trans = 0.88, z = 3 },
+		{ h = barH + 62, y = 0, trans = 0.94, z = 2 },
 	}
 
 	for _, cfg in ipairs(glowAtmosphere) do
@@ -569,7 +571,7 @@ function Util.AddSkeetGradientBar(parent, height)
 		Size = UDim2.new(1, 0, 0, 1),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-		BackgroundTransparency = 0.35,
+		BackgroundTransparency = 0.28,
 		BorderSizePixel = 0,
 		ZIndex = 16,
 		Parent = coreBar,
@@ -581,7 +583,7 @@ function Util.AddSkeetGradientBar(parent, height)
 		Size = UDim2.new(1, 0, 0, 1),
 		Position = UDim2.fromOffset(0, barH - 1),
 		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-		BackgroundTransparency = 0.70,
+		BackgroundTransparency = 0.65,
 		BorderSizePixel = 0,
 		ZIndex = 16,
 		Parent = coreBar,
