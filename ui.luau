@@ -457,11 +457,9 @@ end
 function Util.AddSkeetGradientBar(parent, height)
 	local barH = height or 2
 
-	-- Taller container so soft glow can expand downward without being clipped by ancestors
-	local containerH = barH + 56
 	local barContainer = New("Frame", {
 		Name = "SkeetRainbowBar",
-		Size = UDim2.new(1, 0, 0, containerH),
+		Size = UDim2.new(1, 0, 0, barH),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
@@ -472,64 +470,19 @@ function Util.AddSkeetGradientBar(parent, height)
 
 	local glowGrads = {}
 
-	-- 1. Outer deep ambient bloom (mostly downward so it stays inside the window bounds)
-	local glowBloomOuter = New("ImageLabel", {
-		Name = "RgbGlowBloomOuter",
-		Size = UDim2.new(1, 48, 0, barH + 48),
-		Position = UDim2.fromOffset(-24, -6), -- reduced upward overhang to avoid CanvasGroup / parent clipping
-		BackgroundTransparency = 1,
-		Image = "rbxassetid://18245826428",
-		ScaleType = Enum.ScaleType.Slice,
-		SliceCenter = Rect.new(21, 21, 79, 79),
-		ImageTransparency = 0.32, -- less transparent = stronger visible glow
-		BorderSizePixel = 0,
-		ZIndex = 4,
-		ClipsDescendants = false,
-		Parent = barContainer,
-	})
-	local bloomGradOuter = New("UIGradient", {
-		Rotation = 0,
-		Color = makeChromaSequence(0),
-		Parent = glowBloomOuter,
-	})
-	table.insert(glowGrads, bloomGradOuter)
-
-	-- 2. Inner radiant neon bloom (brighter core aura)
-	local glowBloomInner = New("ImageLabel", {
-		Name = "RgbGlowBloomInner",
-		Size = UDim2.new(1, 24, 0, barH + 28),
-		Position = UDim2.fromOffset(-12, -4),
-		BackgroundTransparency = 1,
-		Image = "rbxassetid://18245826428",
-		ScaleType = Enum.ScaleType.Slice,
-		SliceCenter = Rect.new(21, 21, 79, 79),
-		ImageTransparency = 0.18, -- less transparent
-		BorderSizePixel = 0,
-		ZIndex = 5,
-		ClipsDescendants = false,
-		Parent = barContainer,
-	})
-	local bloomGradInner = New("UIGradient", {
-		Rotation = 0,
-		Color = makeChromaSequence(0),
-		Parent = glowBloomInner,
-	})
-	table.insert(glowGrads, bloomGradInner)
-
-	-- 3. Soft layered downward atmospheric wash (lower transparency = smoother continuous falloff)
-	local glowAtmosphere = {
-		{ h = barH + 3,  y = 0, trans = 0.22, z = 8 },
-		{ h = barH + 7,  y = 0, trans = 0.38, z = 7 },
-		{ h = barH + 13, y = 0, trans = 0.52, z = 6 },
-		{ h = barH + 21, y = 0, trans = 0.66, z = 5 },
-		{ h = barH + 32, y = 0, trans = 0.78, z = 4 },
-		{ h = barH + 46, y = 0, trans = 0.88, z = 3 },
-		{ h = barH + 62, y = 0, trans = 0.94, z = 2 },
+	-- 1. Tight, bright-to-low falloff frames directly under the bar (compact height: 1px to 8px max)
+	-- Starts bright right under the core bar and fades cleanly down to transparent
+	local glowFalloff = {
+		{ h = 1, y = barH,     trans = 0.25, z = 14 },
+		{ h = 2, y = barH + 1, trans = 0.45, z = 13 },
+		{ h = 3, y = barH + 2, trans = 0.65, z = 12 },
+		{ h = 4, y = barH + 4, trans = 0.82, z = 11 },
+		{ h = 5, y = barH + 6, trans = 0.93, z = 10 },
 	}
 
-	for _, cfg in ipairs(glowAtmosphere) do
+	for _, cfg in ipairs(glowFalloff) do
 		local layer = New("Frame", {
-			Name = "RgbAtmosphereLayer",
+			Name = "RgbFalloffLayer",
 			Size = UDim2.new(1, 0, 0, cfg.h),
 			Position = UDim2.fromOffset(0, cfg.y),
 			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
@@ -547,14 +500,36 @@ function Util.AddSkeetGradientBar(parent, height)
 		table.insert(glowGrads, g)
 	end
 
-	-- 4. Core Razor-Sharp Neon RGB Bar
+	-- 2. Subtle, tight edge aura (low spread, not giant)
+	local glowAura = New("ImageLabel", {
+		Name = "RgbGlowAura",
+		Size = UDim2.new(1, 6, 0, barH + 10),
+		Position = UDim2.fromOffset(-3, -2),
+		BackgroundTransparency = 1,
+		Image = "rbxassetid://18245826428",
+		ScaleType = Enum.ScaleType.Slice,
+		SliceCenter = Rect.new(21, 21, 79, 79),
+		ImageTransparency = 0.50,
+		BorderSizePixel = 0,
+		ZIndex = 8,
+		ClipsDescendants = false,
+		Parent = barContainer,
+	})
+	local auraGrad = New("UIGradient", {
+		Rotation = 0,
+		Color = makeChromaSequence(0),
+		Parent = glowAura,
+	})
+	table.insert(glowGrads, auraGrad)
+
+	-- 3. Core Razor-Sharp Neon RGB Bar (Bright, clean, vibrant)
 	local coreBar = New("Frame", {
 		Name = "CoreRgbBar",
 		Size = UDim2.new(1, 0, 0, barH),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 		BorderSizePixel = 0,
-		ZIndex = 15,
+		ZIndex = 16,
 		ClipsDescendants = false,
 		Parent = barContainer,
 	})
@@ -565,27 +540,15 @@ function Util.AddSkeetGradientBar(parent, height)
 	})
 	table.insert(glowGrads, coreGrad)
 
-	-- 5. Top Crystal Razor Gloss Line
+	-- 4. Top Crisp Laser Highlight Line
 	New("Frame", {
 		Name = "RgbGlossLine",
 		Size = UDim2.new(1, 0, 0, 1),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-		BackgroundTransparency = 0.28,
+		BackgroundTransparency = 0.40,
 		BorderSizePixel = 0,
-		ZIndex = 16,
-		Parent = coreBar,
-	})
-
-	-- 6. Bottom Razor Shadow (crisp separation line)
-	New("Frame", {
-		Name = "RgbBottomEdge",
-		Size = UDim2.new(1, 0, 0, 1),
-		Position = UDim2.fromOffset(0, barH - 1),
-		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-		BackgroundTransparency = 0.65,
-		BorderSizePixel = 0,
-		ZIndex = 16,
+		ZIndex = 17,
 		Parent = coreBar,
 	})
 
