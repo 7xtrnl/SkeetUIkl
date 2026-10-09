@@ -470,48 +470,18 @@ function Util.AddSkeetGradientBar(parent, height)
 
 	local glowGrads = {}
 
-	-- 1. Tight, bright-to-low falloff frames directly under the bar (compact height: 1px to 8px max)
-	-- Starts bright right under the core bar and fades cleanly down to transparent
-	local glowFalloff = {
-		{ h = 1, y = barH,     trans = 0.25, z = 14 },
-		{ h = 2, y = barH + 1, trans = 0.45, z = 13 },
-		{ h = 3, y = barH + 2, trans = 0.65, z = 12 },
-		{ h = 4, y = barH + 4, trans = 0.82, z = 11 },
-		{ h = 5, y = barH + 6, trans = 0.93, z = 10 },
-	}
-
-	for _, cfg in ipairs(glowFalloff) do
-		local layer = New("Frame", {
-			Name = "RgbFalloffLayer",
-			Size = UDim2.new(1, 0, 0, cfg.h),
-			Position = UDim2.fromOffset(0, cfg.y),
-			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-			BackgroundTransparency = cfg.trans,
-			BorderSizePixel = 0,
-			ZIndex = cfg.z,
-			ClipsDescendants = false,
-			Parent = barContainer,
-		})
-		local g = New("UIGradient", {
-			Rotation = 0,
-			Color = makeChromaSequence(0),
-			Parent = layer,
-		})
-		table.insert(glowGrads, g)
-	end
-
-	-- 2. Subtle, tight edge aura (low spread, not giant)
+	-- 1. Soft blurred 9-slice neon glow centered on the bar (pure continuous blur, ZERO lines/steps)
 	local glowAura = New("ImageLabel", {
 		Name = "RgbGlowAura",
-		Size = UDim2.new(1, 6, 0, barH + 10),
-		Position = UDim2.fromOffset(-3, -2),
+		Size = UDim2.new(1, 4, 0, barH + 12),
+		Position = UDim2.fromOffset(-2, -3),
 		BackgroundTransparency = 1,
 		Image = "rbxassetid://18245826428",
 		ScaleType = Enum.ScaleType.Slice,
 		SliceCenter = Rect.new(21, 21, 79, 79),
-		ImageTransparency = 0.50,
+		ImageTransparency = 0.35,
 		BorderSizePixel = 0,
-		ZIndex = 8,
+		ZIndex = 10,
 		ClipsDescendants = false,
 		Parent = barContainer,
 	})
@@ -522,7 +492,27 @@ function Util.AddSkeetGradientBar(parent, height)
 	})
 	table.insert(glowGrads, auraGrad)
 
-	-- 3. Core Razor-Sharp Neon RGB Bar (Bright, clean, vibrant)
+	-- 2. Pure smooth vertical fade-out beam directly below the bar (continuous downward alpha blend, 0 visible lines)
+	local smoothFade = New("ImageLabel", {
+		Name = "RgbSmoothFade",
+		Size = UDim2.new(1, 0, 0, 6),
+		Position = UDim2.fromOffset(0, barH),
+		BackgroundTransparency = 1,
+		Image = "rbxassetid://6015897843",
+		ImageTransparency = 0.30,
+		BorderSizePixel = 0,
+		ZIndex = 14,
+		ClipsDescendants = false,
+		Parent = barContainer,
+	})
+	local fadeGrad = New("UIGradient", {
+		Rotation = 0,
+		Color = makeChromaSequence(0),
+		Parent = smoothFade,
+	})
+	table.insert(glowGrads, fadeGrad)
+
+	-- 3. Core Razor-Sharp Neon RGB Bar
 	local coreBar = New("Frame", {
 		Name = "CoreRgbBar",
 		Size = UDim2.new(1, 0, 0, barH),
@@ -546,7 +536,7 @@ function Util.AddSkeetGradientBar(parent, height)
 		Size = UDim2.new(1, 0, 0, 1),
 		Position = UDim2.fromOffset(0, 0),
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-		BackgroundTransparency = 0.40,
+		BackgroundTransparency = 0.35,
 		BorderSizePixel = 0,
 		ZIndex = 17,
 		Parent = coreBar,
