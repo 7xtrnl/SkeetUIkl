@@ -1102,12 +1102,10 @@ end)
 		BackgroundTransparency = 1,
 		ClipsDescendants = true,
 		Parent = inner,
-	})
-
-	-- Load the REAL Springtrap mesh from Roblox Creator Store.
+	})-- Load the REAL Springtrap mesh from Roblox Creator Store once.
 	-- Fallback: blocky rig stub degrades gracefully if the asset can't stream.
-	local worldModel = Instance.new("WorldModel")
-	local rigModel = nil
+	local rigSource = nil
+	local loadStatus = "none" -- "mesh" | "fallback" | "error"
 	do
 		local ok, loaded = pcall(function()
 			local objs = game:GetObjects("rbxassetid://" .. tostring(cfg.ModelId or 135539621158951))
@@ -1115,55 +1113,91 @@ end)
 			return nil
 		end)
 		if ok and loaded then
-			loaded.Name = "SpringtrapModel"
 			-- neutralize scripts inside the imported asset
 			for _, d in ipairs(loaded:GetDescendants()) do
 				if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") then
 					d:Destroy()
 				end
 			end
-			rigModel = loaded
-		else
-			-- fallback blocky rig stub
-			local m = Instance.new("Model")
-			m.Name = "SpringtrapFallback"
-			local function part(name, size, cf)
-				local p = Instance.new("Part")
-				p.Name = name
-				p.Anchored = true
-				p.CanCollide = false
-				p.CanQuery = false
-				p.CastShadow = false
-				p.Size = size
-				p.CFrame = cf
-				p.Color = Library.Theme.Accent1
-				p.Material = Enum.Material.SmoothPlastic
-				p.Parent = m
-				return p
+			-- Steam the mesh under our style: neutral accent tint so theme can recolor it
+			local partCount = 0
+			for _, d in ipairs(loaded:GetDescendants()) do
+				if d:IsA("BasePart") then
+					partCount = partCount + 1
+					d.Anchored = true
+					d.CanCollide = false
+					d.CanQuery = false
+					d.CastShadow = false
+					d.Material = Enum.Material.SmoothPlastic
+				end
 			end
-			part("Torso", Vector3.new(2, 2.6, 1), CFrame.new(0, 3.3, 0))
-			part("Head", Vector3.new(1.5, 1.5, 1.2), CFrame.new(0, 5.15, 0))
-			part("EarL", Vector3.new(0.35, 1.1, 0.3), CFrame.new(0.45, 6.2, 0) * CFrame.Angles(0, 0, math.rad(8)))
-			part("EarR", Vector3.new(0.35, 1.1, 0.3), CFrame.new(-0.45, 6.2, 0) * CFrame.Angles(0, 0, math.rad(-8)))
-			part("ArmL", Vector3.new(0.55, 2.4, 0.55), CFrame.new(1.35, 3.5, 0))
-			part("ArmR", Vector3.new(0.55, 2.4, 0.55), CFrame.new(-1.35, 3.5, 0))
-			part("LegL", Vector3.new(0.7, 2, 0.7), CFrame.new(0.45, 1, 0))
-			part("LegR", Vector3.new(0.7, 2, 0.7), CFrame.new(-0.45, 1, 0))
-			rigModel = m
+			if partCount == 0 then
+				-- asset returned but contains no renderable BaseParts (e.g. a lone Mesh with no parent) — fall back
+				loadStatus = "empty"
+				warn("[axiom] esp preview: Springtrap asset loaded but has 0 BaseParts — using fallback blocky rig")
+				rigSource = nil
+			else
+				-- If asset has multiple top-level models keep it; set a pivot if missing
+				local _, pivotSize = loaded:GetBoundingBox()
+				if pivotSize.Magnitude > 60 then
+					-- mesh is oversized; scale every part down toward ~6 studs tall via a helper Model
+					local holder = Instance.new("Model")
+					loaded.Parent = holder
+					loaded:SetAttribute("PreviewGroupName", "SpringtrapMesh")
+					rigSource = holder
+				else
+					rigSource = loaded
+				end
+				loadStatus = "loaded"
+				print("[axiom] esp preview: real Springtrap mesh loaded — " .. partCount .. " parts")
+			end
+		else
+			loadStatus = "error"
+			warn("[axiom] esp preview: Springtrap mesh failed to load (" .. tostring(cfg.ModelId or 135539621158951) .. ") — using fallback blocky rig")
 		end
 	end
-	-- Ground the model at the panel pivot before capturing its original transform
-	worldModel.Parent = mannequin
-	rigModel.Parent = worldModel
-	local rigPivot = rigModel:GetPivot()
 
-	-- One ViewportFrame per angle, all pointing at the same WorldModel
+	-- Build a fallback blocky rig (used if the real mesh failed to load)
+	if not rigSource then
+		local m = Instance.new("Model")
+		m.Name = "SpringtrapFallback"
+		local function part(name, size, cf)
+			local p = Instance.new("Part")
+			p.Name = name
+			p.Anchored = true
+			p.CanCollide = false
+			p.CanQuery = false
+			p.CastShadow = false
+			p.Size = size
+			p.CFrame = cf
+			p.Color = Library.Theme.Accent1
+			p.Material = Enum.Material.SmoothPlastic
+			p.Parent = m
+			return p
+		end
+		part("Torso", Vector3.new(2, 2.6, 1), CFrame.new(0, 3.3, 0))
+		part("Head", Vector3.new(1.5, 1.5, 1.2), CFrame.new(0, 5.15, 0))
+		part("EarL", Vector3.new(0.35, 1.1, 0.3), CFrame.new(0.45, 6.2, 0) * CFrame.Angles(0, 0, math.rad(8)))
+		part("EarR", Vector3.new(0.35, 1.1, 0.3), CFrame.new(-0.45, 6.2, 0) * CFrame.Angles(0, 0, math.rad(-8)))
+		part("ArmL", Vector3.new(0.55, 2.4, 0.55), CFrame.new(1.35, 3.5, 0))
+		part("ArmR", Vector3.new(0.55, 2.4, 0.55), CFrame.new(-1.35, 3.5, 0))
+		part("LegL", Vector3.new(0.7, 2, 0.7), CFrame.new(0.45, 1, 0))
+		part("LegR", Vector3.new(0.7, 2, 0.7), CFrame.new(-0.45, 1, 0))
+		rigSource = m
+		loadStatus = "fallback"
+	end
+
+	-- Show load path on the panel header so users see what rendered without opening a console
+	header.Text = (cfg.Title or "esp preview") .. " · " .. loadStatus
+
+	-- One ViewportFrame per angle, EACH with its OWN WorldModel + rig clone.
+	-- (ViewportFrames only render a WorldModel that is their own descendant;
+	-- sharing one WorldModel across viewports renders nothing.)
 	local viewports = {}
+	local rigClones = {}
 	local renderConn = nil
 	do
-		local vpCount = 0
 		for i, name in ipairs(angleNames) do
-			vpCount = vpCount + 1
 			local f = New("Frame", {
 				Size = UDim2.new(0.3333, -2, 1, 0),
 				Position = UDim2.new((i - 1) * 0.3333, 0, 0, 0),
@@ -1175,20 +1209,38 @@ end)
 			vp.Size = UDim2.fromScale(1, 1)
 			vp.BackgroundTransparency = 1
 			vp.Active = true -- sink mouse input so drag-to-rotate receives events
-		-- ViewportFrame.Ambient must be a Color3 (white = neutral lighting)
+			-- ViewportFrame.Ambient must be a Color3 (white = neutral lighting)
 			vp.Ambient = Color3.new(1, 1, 1)
 			vp.LightDirection = Vector3.new(0, -1, -1)
 			vp.Parent = f
 			viewports[name] = vp
 
-			-- Per-angle camera projecting the shared rig at that yaw
+			-- Each viewport gets its own WorldModel containing a CLONE of the rig
+			local wm = Instance.new("WorldModel")
+			local rigClone = rigSource:Clone()
+			rigClone.Name = "Rig_" .. name
+			rigClone.Parent = wm
+			wm.Parent = vp
+			-- Normalize pivot: bbox center on X/Z, feet (bbox bottom) at y=0)
+			local okPivot, bboxCF, bboxSize = pcall(function() return rigClone:GetBoundingBox() end)
+			local rigPivot = rigClone:GetPivot()
+			if okPivot and bboxCF and bboxSize.Magnitude > 0 then
+				rigPivot = rigPivot * CFrame.new(-bboxCF.Position.X, -(bboxCF.Position.Y - bboxSize.Y * 0.5), -bboxCF.Position.Z)
+			end
+			rigClones[name] = { Model = rigClone, Pivot = rigPivot, WM = wm, BBox = bboxSize, BBoxCF = bboxCF }
+
+			-- Per-angle camera auto-fit: distance derived from the rig's real height/width
 			local cam = Instance.new("Camera")
-			cam.FieldOfView = 40
 			cam.Parent = vp
-			local dist = 13
 			local yaw = angleYaw[name]
-			local camPos = Vector3.new(math.sin(yaw) * dist, 4.2, math.cos(yaw) * dist)
-			cam.CFrame = CFrame.new(camPos, Vector3.new(0, 3.4, 0))					vp.CurrentCamera = cam
+			cam.FieldOfView = 40
+			local h = (bboxSize and bboxSize.Y) or 7
+			local w = (bboxSize and math.max(bboxSize.X, bboxSize.Z)) or 3
+			h = math.max(h, w * (9 / 16)) -- never let width overflow viewport
+			local dist = math.max((h * 0.5) / math.tan(math.rad(20)), h * 0.35) + h * 0.1
+			local camPos = Vector3.new(math.sin(yaw) * dist, h * 0.55, math.cos(yaw) * dist)
+			cam.CFrame = CFrame.new(camPos, Vector3.new(0, h * 0.5, 0))
+			vp.CurrentCamera = cam
 
 					-- Live ESP-style bars drawn around THIS angle
 					local bbox = New("Frame", {
@@ -1253,12 +1305,9 @@ end)
 					f:SetAttribute("AngleName", name)
 					self["Boxes_" .. name] = { BBox = bbox, BBoxStroke = bboxStroke, Name = nameLbl, HealthBg = healthBarBg, HealthFill = healthBarFill, Dist = distLbl }
 				end
-		-- Primary Camera drives WorldModel (needed for ViewportFrames sharing a WorldModel)
-		local sharedCam = Instance.new("Camera")
-		sharedCam.CFrame = CFrame.new(Vector3.new(0, 8, 13), Vector3.new(0, 3.4, 0))
-		sharedCam.Parent = worldModel
+		end
 
-		-- Slow idle spin of the single mesh rig, shared by all three viewports.
+		-- Slow idle spin applied to EVERY rig clone (one per viewport) simultaneously.
 		-- Manual yaw (mouse drag on a viewport) adds to the idle spin.
 		renderConn = RunService.RenderStepped:Connect(function(dt)
 			if Library.Unloaded or not mannequin.Parent or not outer.Parent then
@@ -1266,10 +1315,15 @@ end)
 				return
 			end
 			spin = (spin + dt * 0.55) % (math.pi * 2)
-			local baseCF = CFrame.new(0, 3, 0)
+			local baseCF = CFrame.new(0, 0.05, 0)
 				* CFrame.Angles(0, spin + manualYaw, 0)
 				* CFrame.Angles(math.rad(manualPitch), 0, 0)
-			rigModel:PivotTo(baseCF * rigPivot)
+			for _, name in ipairs(angleNames) do
+				local rc = rigClones[name]
+				if rc and rc.Model then
+					rc.Model:PivotTo(baseCF * rc.Pivot)
+				end
+			end
 		end)
 		table.insert(Library.Connections, renderConn)
 	end
@@ -1277,11 +1331,16 @@ end)
 -- Method: toggle preview elements driven by external ESP flags
 	function self:Set(flagState)
 	flagState = flagState or {}
-	-- Recolor the 3D rig parts live (all angles share one model)
+	-- Recolor all rig clones live (one per viewport)
 	local rigColor = flagState.Color or Library.Theme.Accent1
-	for _, p in ipairs(rigModel:GetChildren()) do
-	if p:IsA("BasePart") and p.Name ~= "Root" then
-	p.Color = rigColor
+	for _, name in ipairs(angleNames) do
+	local rc = rigClones[name]
+	if rc and rc.Model then
+	for _, d in ipairs(rc.Model:GetDescendants()) do
+	if d:IsA("BasePart") then
+	d.Color = rigColor
+	end
+	end
 	end
 	end
 	for _, angleName in ipairs(angleNames) do
