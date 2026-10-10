@@ -1254,7 +1254,7 @@ end)
 		-- Option 3: If both failed, try loading from asset ID
 		if not rigSource then
 			local ok, loaded = pcall(function()
-				local objs = game:GetObjects("rbxassetid://" .. tostring(cfg.ModelId or14622192591))
+				local objs = game:GetObjects("rbxassetid://" .. tostring(cfg.ModelId or 14622192591))
 				if typeof(objs) == "table" and objs[1] then return objs[1] end
 				return nil
 			end)
@@ -1296,7 +1296,7 @@ end)
 				end
 			else
 				loadStatus = "error"
-				warn("[axiom] esp preview: Springtrap mesh failed to load (" .. tostring(cfg.ModelId or14622192591) .. ") — using fallback blocky rig")
+				warn("[axiom] esp preview: Springtrap mesh failed to load (" .. tostring(cfg.ModelId or 14622192591) .. ") — using fallback blocky rig")
 			end
 		end
 	end
