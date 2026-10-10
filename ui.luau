@@ -1326,7 +1326,6 @@ end)
 			end
 		end)
 		table.insert(Library.Connections, renderConn)
-	end
 
 -- Method: toggle preview elements driven by external ESP flags
 	function self:Set(flagState)
