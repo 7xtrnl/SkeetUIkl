@@ -1254,7 +1254,7 @@ end)
 		-- Option 3: If both failed, try loading from asset ID
 		if not rigSource then
 			local ok, loaded = pcall(function()
-				local objs = game:GetObjects("rbxassetid://" .. tostring(cfg.ModelId or 14622192591))
+				local objs = game:GetObjects("rbxassetid://" .. tostring(cfg.ModelId or 135539621158951))
 				if typeof(objs) == "table" and objs[1] then return objs[1] end
 				return nil
 			end)
@@ -1296,7 +1296,7 @@ end)
 				end
 			else
 				loadStatus = "error"
-				warn("[axiom] esp preview: Springtrap mesh failed to load (" .. tostring(cfg.ModelId or 14622192591) .. ") — using fallback blocky rig")
+				warn("[axiom] esp preview: Springtrap mesh failed to load (" .. tostring(cfg.ModelId or 135539621158951) .. ") — using fallback blocky rig")
 			end
 		end
 	end
@@ -1371,12 +1371,12 @@ end)
 		-- Camera auto-fit: distance derived from the rig's real height/width
 		local cam = Instance.new("Camera")
 		cam.Parent = vp
-		cam.FieldOfView = 40
+		cam.FieldOfView = 70 -- Wider FOV for better visibility
 		local h = (bboxSize and bboxSize.Y) or 7
 		local w = (bboxSize and math.max(bboxSize.X, bboxSize.Z)) or 3
 		h = math.max(h, w * (9 / 16)) -- never let width overflow viewport
-		local dist = math.max((h * 0.5) / math.tan(math.rad(20)), h * 0.35) + h * 0.1
-		local camPos = Vector3.new(0, h * 0.55, dist)
+		local dist = math.max(h * 1.5, 15) -- Increased distance
+		local camPos = Vector3.new(0, h * 0.5, dist)
 		cam.CFrame = CFrame.lookAt(camPos, Vector3.new(0, h * 0.5, 0))
 		vp.CurrentCamera = cam
 
