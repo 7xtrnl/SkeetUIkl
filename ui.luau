@@ -1096,64 +1096,116 @@ end)
 	-- angles (front, 3/4, back) using three ViewportFrames. Rotates live + drag.
 	local angleNames = { "front", "rq", "back" }
 	local angleYaw = { front = 0, rq = 0.7, back = math.pi }
+	local angleFrames = {} -- Fixed: was missing declaration
 	local mannequin = New("Frame", {
 		Size = UDim2.new(1, -20, 1, -28),
 		Position = UDim2.fromOffset(10, 24),
 		BackgroundTransparency = 1,
 		ClipsDescendants = true,
 		Parent = inner,
-	})-- Load the REAL Springtrap mesh from Roblox Creator Store once.
+	})
+
+	-- Load the REAL Springtrap mesh from Roblox Creator Store once.
+	-- First try to load from Workspace if available (for local testing), then try asset ID.
 	-- Fallback: blocky rig stub degrades gracefully if the asset can't stream.
 	local rigSource = nil
 	local loadStatus = "none" -- "mesh" | "fallback" | "error"
 	do
-		local ok, loaded = pcall(function()
-			local objs = game:GetObjects("rbxassetid://" .. tostring(cfg.ModelId or 135539621158951))
-			if typeof(objs) == "table" and objs[1] then return objs[1] end
-			return nil
-		end)
-		if ok and loaded then
-			-- neutralize scripts inside the imported asset
-			for _, d in ipairs(loaded:GetDescendants()) do
-				if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") then
-					d:Destroy()
+		-- Try to load from Workspace first (for local development)
+		local workspaceModel = workspace:FindFirstChild("Springtrap")
+		if workspaceModel then
+			local ok, loaded = pcall(function()
+				return workspaceModel:Clone()
+			end)
+			if ok and loaded then
+				-- neutralize scripts inside the imported asset
+				for _, d in ipairs(loaded:GetDescendants()) do
+					if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") then
+						d:Destroy()
+					end
 				end
-			end
-			-- Steam the mesh under our style: neutral accent tint so theme can recolor it
-			local partCount = 0
-			for _, d in ipairs(loaded:GetDescendants()) do
-				if d:IsA("BasePart") then
-					partCount = partCount + 1
-					d.Anchored = true
-					d.CanCollide = false
-					d.CanQuery = false
-					d.CastShadow = false
-					d.Material = Enum.Material.SmoothPlastic
+				-- Style the mesh under our style: neutral accent tint so theme can recolor it
+				local partCount = 0
+				for _, d in ipairs(loaded:GetDescendants()) do
+					if d:IsA("BasePart") then
+						partCount = partCount + 1
+						d.Anchored = true
+						d.CanCollide = false
+						d.CanQuery = false
+						d.CastShadow = false
+						d.Material = Enum.Material.SmoothPlastic
+					end
 				end
-			end
-			if partCount == 0 then
-				-- asset returned but contains no renderable BaseParts (e.g. a lone Mesh with no parent) — fall back
-				loadStatus = "empty"
-				warn("[axiom] esp preview: Springtrap asset loaded but has 0 BaseParts — using fallback blocky rig")
-				rigSource = nil
-			else
-				-- If asset has multiple top-level models keep it; set a pivot if missing
-				local _, pivotSize = loaded:GetBoundingBox()
-				if pivotSize.Magnitude > 60 then
-					-- mesh is oversized; scale every part down toward ~6 studs tall via a helper Model
-					local holder = Instance.new("Model")
-					loaded.Parent = holder
-					loaded:SetAttribute("PreviewGroupName", "SpringtrapMesh")
-					rigSource = holder
+				if partCount == 0 then
+					loadStatus = "empty"
+					warn("[axiom] esp preview: Workspace Springtrap loaded but has 0 BaseParts — using fallback blocky rig")
+					rigSource = nil
 				else
-					rigSource = loaded
+					local _, pivotSize = loaded:GetBoundingBox()
+					if pivotSize.Magnitude > 60 then
+						local holder = Instance.new("Model")
+						loaded.Parent = holder
+						loaded:SetAttribute("PreviewGroupName", "SpringtrapMesh")
+						rigSource = holder
+					else
+						rigSource = loaded
+					end
+					loadStatus = "loaded"
+					print("[axiom] esp preview: Springtrap loaded from Workspace — " .. partCount .. " parts")
 				end
-				loadStatus = "loaded"
-				print("[axiom] esp preview: real Springtrap mesh loaded — " .. partCount .. " parts")
+			else
+				loadStatus = "error"
+				warn("[axiom] esp preview: Failed to clone from Workspace — trying asset ID")
 			end
-		else
-			loadStatus = "error"
-			warn("[axiom] esp preview: Springtrap mesh failed to load (" .. tostring(cfg.ModelId or 135539621158951) .. ") — using fallback blocky rig")
+		end
+
+		-- If Workspace load failed, try loading from asset ID
+		if not rigSource then
+			local ok, loaded = pcall(function()
+				local objs = game:GetObjects("rbxassetid://" .. tostring(cfg.ModelId or 135539621158951))
+				if typeof(objs) == "table" and objs[1] then return objs[1] end
+				return nil
+			end)
+			if ok and loaded then
+				-- neutralize scripts inside the imported asset
+				for _, d in ipairs(loaded:GetDescendants()) do
+					if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") then
+						d:Destroy()
+					end
+				end
+				-- Style the mesh under our style: neutral accent tint so theme can recolor it
+				local partCount = 0
+				for _, d in ipairs(loaded:GetDescendants()) do
+					if d:IsA("BasePart") then
+						partCount = partCount + 1
+						d.Anchored = true
+						d.CanCollide = false
+						d.CanQuery = false
+						d.CastShadow = false
+						d.Material = Enum.Material.SmoothPlastic
+					end
+				end
+				if partCount == 0 then
+					loadStatus = "empty"
+					warn("[axiom] esp preview: Springtrap asset loaded but has 0 BaseParts — using fallback blocky rig")
+					rigSource = nil
+				else
+					local _, pivotSize = loaded:GetBoundingBox()
+					if pivotSize.Magnitude > 60 then
+						local holder = Instance.new("Model")
+						loaded.Parent = holder
+						loaded:SetAttribute("PreviewGroupName", "SpringtrapMesh")
+						rigSource = holder
+					else
+						rigSource = loaded
+					end
+					loadStatus = "loaded"
+					print("[axiom] esp preview: real Springtrap mesh loaded from asset ID — " .. partCount .. " parts")
+				end
+			else
+				loadStatus = "error"
+				warn("[axiom] esp preview: Springtrap mesh failed to load (" .. tostring(cfg.ModelId or 135539621158951) .. ") — using fallback blocky rig")
+			end
 		end
 	end
 
@@ -1211,7 +1263,9 @@ end)
 			vp.Active = true -- sink mouse input so drag-to-rotate receives events
 			-- ViewportFrame.Ambient must be a Color3 (white = neutral lighting)
 			vp.Ambient = Color3.new(1, 1, 1)
+			vp.LightColor = Color3.new(1, 1, 1)
 			vp.LightDirection = Vector3.new(0, -1, -1)
+			vp.ImageTransparency = 0
 			vp.Parent = f
 			viewports[name] = vp
 
@@ -1239,7 +1293,7 @@ end)
 			h = math.max(h, w * (9 / 16)) -- never let width overflow viewport
 			local dist = math.max((h * 0.5) / math.tan(math.rad(20)), h * 0.35) + h * 0.1
 			local camPos = Vector3.new(math.sin(yaw) * dist, h * 0.55, math.cos(yaw) * dist)
-			cam.CFrame = CFrame.new(camPos, Vector3.new(0, h * 0.5, 0))
+			cam.CFrame = CFrame.lookAt(camPos, Vector3.new(0, h * 0.5, 0))
 			vp.CurrentCamera = cam
 
 					-- Live ESP-style bars drawn around THIS angle
