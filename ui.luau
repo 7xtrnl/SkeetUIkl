@@ -1102,206 +1102,140 @@ end)
 	})
 
 	-- Load the REAL Springtrap mesh from Roblox Creator Store once.
-	-- Priority: 1) Direct model reference (cfg.Model), 2) Workspace Springtrap, 3) Asset ID
-	-- Fallback: blocky rig stub degrades gracefully if the asset can't stream.
+	-- Target asset: 14622192591 (SpringTrap-Killer)
+	-- Priority: 1) Direct model (cfg.Model), 2) ReplicatedStorage / Workspace, 3) Asset ID stream, 4) Fallback
 	local rigSource = nil
-	local loadStatus = "none" -- "mesh" | "fallback" | "error"
+	local loadStatus = "none" -- "loaded" | "fallback" | "error"
+	local targetModelId = cfg.ModelId or 14622192591
+
+	local function prepareModel(candidate)
+		if not candidate then return nil end
+		local modelInstance = nil
+		if candidate:IsA("Model") then
+			modelInstance = candidate
+		elseif candidate:IsA("Folder") then
+			modelInstance = candidate:FindFirstChildOfClass("Model") or candidate
+		end
+		if not modelInstance then return nil end
+
+		local ok, cloned = pcall(function() return modelInstance:Clone() end)
+		if not ok or not cloned then return nil end
+
+		-- Neutralize scripts inside the imported asset
+		for _, d in ipairs(cloned:GetDescendants()) do
+			if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") then
+				d:Destroy()
+			end
+		end
+
+		local partCount = 0
+		for _, d in ipairs(cloned:GetDescendants()) do
+			if d:IsA("BasePart") then
+				partCount = partCount + 1
+				d.Anchored = true
+				d.CanCollide = false
+				d.CanQuery = false
+				d.CastShadow = false
+			end
+		end
+
+		if partCount == 0 then return nil end
+		return cloned, partCount
+	end
+
 	do
-		-- Option 1: Direct model reference (for executors - pass the model instance)
+		-- Option 1: Direct model reference (passed in config)
 		if cfg.Model and typeof(cfg.Model) == "Instance" then
-			local ok, loaded = pcall(function()
-				return cfg.Model:Clone()
-			end)
-			if ok and loaded then
-				-- neutralize scripts inside the imported asset
-				for _, d in ipairs(loaded:GetDescendants()) do
-					if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") then
-						d:Destroy()
-					end
-				end
-				-- Style the mesh under our style: neutral accent tint so theme can recolor it
-				local partCount = 0
-				for _, d in ipairs(loaded:GetDescendants()) do
-					if d:IsA("BasePart") then
-						partCount = partCount + 1
-						d.Anchored = true
-						d.CanCollide = false
-						d.CanQuery = false
-						d.CastShadow = false
-						d.Material = Enum.Material.SmoothPlastic
-					end
-				end
-				if partCount == 0 then
-					loadStatus = "empty"
-					warn("[axiom] esp preview: Direct model loaded but has 0 BaseParts — using fallback blocky rig")
-					rigSource = nil
-				else
-					local _, pivotSize = loaded:GetBoundingBox()
-					if pivotSize.Magnitude > 60 then
-						local holder = Instance.new("Model")
-						loaded.Parent = holder
-						loaded:SetAttribute("PreviewGroupName", "SpringtrapMesh")
-						rigSource = holder
-					else
-						rigSource = loaded
-					end
-					loadStatus = "loaded"
-					print("[axiom] esp preview: Springtrap loaded from direct model reference — " .. partCount .. " parts")
-				end
+			local cloned, partCount = prepareModel(cfg.Model)
+			if cloned then
+				rigSource = cloned
+				loadStatus = "loaded"
+				print("[axiom] esp preview: Springtrap loaded from direct model reference — " .. partCount .. " parts")
 			else
-				loadStatus = "error"
-				warn("[axiom] esp preview: Failed to clone direct model — trying Workspace")
+				warn("[axiom] esp preview: cfg.Model provided but has 0 BaseParts or failed to clone")
 			end
 		end
 
-		-- Option 2: Try to load from Workspace (for Studio testing) or search entire game
+		-- Option 2: Search ReplicatedStorage and Workspace for pre-placed Springtrap model
 		if not rigSource then
-			local workspaceModel = workspace:FindFirstChild("Springtrap")
-			if workspaceModel then
-				local ok, loaded = pcall(function()
-					return workspaceModel:Clone()
-				end)
-				if ok and loaded then
-					-- neutralize scripts inside the imported asset
-					for _, d in ipairs(loaded:GetDescendants()) do
-						if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") then
-							d:Destroy()
-						end
-					end
-					-- Style the mesh under our style: neutral accent tint so theme can recolor it
-					local partCount = 0
-					for _, d in ipairs(loaded:GetDescendants()) do
-						if d:IsA("BasePart") then
-							partCount = partCount + 1
-							d.Anchored = true
-							d.CanCollide = false
-							d.CanQuery = false
-							d.CastShadow = false
-							d.Material = Enum.Material.SmoothPlastic
-						end
-					end
-					if partCount == 0 then
-						loadStatus = "empty"
-						warn("[axiom] esp preview: Workspace Springtrap loaded but has 0 BaseParts — using fallback blocky rig")
-						rigSource = nil
-					else
-						local _, pivotSize = loaded:GetBoundingBox()
-						if pivotSize.Magnitude > 60 then
-							local holder = Instance.new("Model")
-							loaded.Parent = holder
-							loaded:SetAttribute("PreviewGroupName", "SpringtrapMesh")
-							rigSource = holder
-						else
-							rigSource = loaded
-						end
-						loadStatus = "loaded"
-						print("[axiom] esp preview: Springtrap loaded from Workspace — " .. partCount .. " parts")
-					end
-				else
-					loadStatus = "error"
-					warn("[axiom] esp preview: Failed to clone from Workspace — searching game")
-				end
-			else
-				-- Search entire game for Springtrap model
-				for _, child in ipairs(game:GetDescendants()) do
-					if child.Name == "Springtrap" and child:IsA("Model") then
-						local ok, loaded = pcall(function()
-							return child:Clone()
-						end)
-						if ok and loaded then
-							-- neutralize scripts inside the imported asset
-							for _, d in ipairs(loaded:GetDescendants()) do
-								if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") then
-									d:Destroy()
-								end
-							end
-							-- Style the mesh under our style: neutral accent tint so theme can recolor it
-							local partCount = 0
-							for _, d in ipairs(loaded:GetDescendants()) do
-								if d:IsA("BasePart") then
-									partCount = partCount + 1
-									d.Anchored = true
-									d.CanCollide = false
-									d.CanQuery = false
-									d.CastShadow = false
-									d.Material = Enum.Material.SmoothPlastic
-								end
-							end
-							if partCount == 0 then
-								loadStatus = "empty"
-								warn("[axiom] esp preview: Found Springtrap but has 0 BaseParts — using fallback blocky rig")
-								rigSource = nil
-							else
-								local _, pivotSize = loaded:GetBoundingBox()
-								if pivotSize.Magnitude > 60 then
-									local holder = Instance.new("Model")
-									loaded.Parent = holder
-									loaded:SetAttribute("PreviewGroupName", "SpringtrapMesh")
-									rigSource = holder
-								else
-									rigSource = loaded
-								end
-								loadStatus = "loaded"
-								print("[axiom] esp preview: Springtrap found in game at " .. child:GetFullName() .. " — " .. partCount .. " parts")
-								break
-							end
+			local searchContainers = {
+				workspace,
+				game:GetService("ReplicatedStorage"),
+			}
+			local namesToFind = { "SpringTrap-Killer", "Springtrap", "SpringTrap", "springtrap" }
+
+			for _, container in ipairs(searchContainers) do
+				for _, name in ipairs(namesToFind) do
+					local found = container:FindFirstChild(name)
+					if found and (found:IsA("Model") or found:IsA("Folder")) then
+						local cloned, partCount = prepareModel(found)
+						if cloned then
+							rigSource = cloned
+							loadStatus = "loaded"
+							print("[axiom] esp preview: Springtrap loaded from " .. container.Name .. "/" .. name .. " — " .. partCount .. " parts")
+							break
 						end
 					end
 				end
+				if rigSource then break end
+
+				-- Fuzzy match on children names
+				for _, child in ipairs(container:GetChildren()) do
+					if (child:IsA("Model") or child:IsA("Folder")) and string.find(child.Name:lower(), "springtrap") then
+						local cloned, partCount = prepareModel(child)
+						if cloned then
+							rigSource = cloned
+							loadStatus = "loaded"
+							print("[axiom] esp preview: Springtrap matched in " .. container.Name .. " as " .. child.Name .. " — " .. partCount .. " parts")
+							break
+						end
+					end
+				end
+				if rigSource then break end
 			end
 		end
 
-		-- Option 3: If both failed, try loading from asset ID
+		-- Option 3: Load from Roblox Asset ID (Executors / Elevated Studio context)
 		if not rigSource then
 			local ok, loaded = pcall(function()
-				local objs = game:GetObjects("rbxassetid://" .. tostring(cfg.ModelId or 135539621158951))
-				if typeof(objs) == "table" and objs[1] then return objs[1] end
+				local uri = "rbxassetid://" .. tostring(targetModelId)
+				-- Some executors expose getobjects as a global function
+				if typeof(getobjects) == "function" then
+					local res = getobjects(uri)
+					if typeof(res) == "table" and res[1] then return res[1] end
+				end
+				local res = game:GetObjects(uri)
+				if typeof(res) == "table" and res[1] then return res[1] end
 				return nil
 			end)
-			if ok and loaded then
-				-- neutralize scripts inside the imported asset
-				for _, d in ipairs(loaded:GetDescendants()) do
-					if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") then
-						d:Destroy()
-					end
-				end
-				-- Style the mesh under our style: neutral accent tint so theme can recolor it
-				local partCount = 0
-				for _, d in ipairs(loaded:GetDescendants()) do
-					if d:IsA("BasePart") then
-						partCount = partCount + 1
-						d.Anchored = true
-						d.CanCollide = false
-						d.CanQuery = false
-						d.CastShadow = false
-						d.Material = Enum.Material.SmoothPlastic
-					end
-				end
-				if partCount == 0 then
-					loadStatus = "empty"
-					warn("[axiom] esp preview: Springtrap asset loaded but has 0 BaseParts — using fallback blocky rig")
-					rigSource = nil
-				else
-					local _, pivotSize = loaded:GetBoundingBox()
-					if pivotSize.Magnitude > 60 then
-						local holder = Instance.new("Model")
-						loaded.Parent = holder
-						loaded:SetAttribute("PreviewGroupName", "SpringtrapMesh")
-						rigSource = holder
-					else
-						rigSource = loaded
-					end
+
+			if (not ok or not loaded) then
+				-- Fallback to InsertService if in Studio server / plugin context
+				pcall(function()
+					local insert = game:GetService("InsertService")
+					local res = insert:LoadAsset(tonumber(targetModelId))
+					if res then loaded = res end
+				end)
+			end
+
+			if loaded then
+				local cloned, partCount = prepareModel(loaded)
+				if cloned then
+					rigSource = cloned
 					loadStatus = "loaded"
-					print("[axiom] esp preview: real Springtrap mesh loaded from asset ID — " .. partCount .. " parts")
+					print("[axiom] esp preview: Real Springtrap mesh (ID: " .. tostring(targetModelId) .. ") loaded — " .. partCount .. " parts")
+				else
+					loadStatus = "empty"
+					warn("[axiom] esp preview: Springtrap asset loaded but contained 0 BaseParts")
 				end
 			else
 				loadStatus = "error"
-				warn("[axiom] esp preview: Springtrap mesh failed to load (" .. tostring(cfg.ModelId or 135539621158951) .. ") — using fallback blocky rig")
+				warn("[axiom] esp preview: Could not stream Springtrap asset (" .. tostring(targetModelId) .. ") — using fallback rig. (Tip: In Roblox Studio, place SpringTrap-Killer in ReplicatedStorage or Workspace)")
 			end
 		end
 	end
 
-	-- Build a fallback blocky rig (used if the real mesh failed to load)
+	-- Build a fallback blocky rig (used if the real mesh could not stream)
 	if not rigSource then
 		local m = Instance.new("Model")
 		m.Name = "SpringtrapFallback"
@@ -1331,7 +1265,7 @@ end)
 		loadStatus = "fallback"
 	end
 
-	-- Show load path on the panel header so users see what rendered without opening a console
+	-- Show load path on the panel header so users see what rendered
 	header.Text = (cfg.Title or "esp preview") .. " · " .. loadStatus
 
 	-- Single ViewportFrame with WorldModel
@@ -1339,16 +1273,16 @@ end)
 	local rigClone = nil
 	local renderConn = nil
 	local bboxSize = nil
-	local rigPivot = nil
 
 	do
 		local vp = Instance.new("ViewportFrame")
 		vp.Size = UDim2.fromScale(1, 1)
 		vp.BackgroundTransparency = 1
 		vp.Active = true -- sink mouse input so drag-to-rotate receives events
-		vp.Ambient = Color3.new(1, 1, 1)
-		vp.LightColor = Color3.new(1, 1, 1)
-		vp.LightDirection = Vector3.new(0, -1, -1)
+		-- Balanced lighting with specular depth for 3D textures
+		vp.Ambient = Color3.fromRGB(125, 125, 130)
+		vp.LightColor = Color3.fromRGB(245, 245, 250)
+		vp.LightDirection = Vector3.new(-1, -1.6, -2)
 		vp.ImageTransparency = 0
 		vp.Parent = mannequin
 		viewport = vp
@@ -1360,24 +1294,34 @@ end)
 		rigClone.Parent = wm
 		wm.Parent = vp
 
-		-- Normalize pivot: bbox center on X/Z, feet (bbox bottom) at y=0)
-		local okPivot, bboxCF, bboxSizeTemp = pcall(function() return rigClone:GetBoundingBox() end)
-		bboxSize = bboxSizeTemp
-		rigPivot = rigClone:GetPivot()
-		if okPivot and bboxCF and bboxSize.Magnitude > 0 then
-			rigPivot = rigPivot * CFrame.new(-bboxCF.Position.X, -(bboxCF.Position.Y - bboxSize.Y * 0.5), -bboxCF.Position.Z)
+		-- Normalize model position: feet at y=0, center on X/Z origin
+		local okBBox, bboxCF, bboxSizeTemp = pcall(function() return rigClone:GetBoundingBox() end)
+		bboxSize = (okBBox and bboxSizeTemp) or Vector3.new(2, 6, 2)
+		if bboxSize.Magnitude <= 0 then bboxSize = Vector3.new(2, 6, 2) end
+
+		if okBBox and bboxCF then
+			local targetCenter = Vector3.new(0, bboxSize.Y * 0.5, 0)
+			local offset = targetCenter - bboxCF.Position
+			for _, part in ipairs(rigClone:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.CFrame = CFrame.new(offset) * part.CFrame
+				end
+			end
 		end
 
-		-- Camera auto-fit: distance derived from the rig's real height/width
+		-- Camera auto-fit: frame the rig cleanly with natural FOV
 		local cam = Instance.new("Camera")
 		cam.Parent = vp
-		cam.FieldOfView = 70 -- Wider FOV for better visibility
-		local h = (bboxSize and bboxSize.Y) or 7
-		local w = (bboxSize and math.max(bboxSize.X, bboxSize.Z)) or 3
-		h = math.max(h, w * (9 / 16)) -- never let width overflow viewport
-		local dist = math.max(h * 1.5, 15) -- Increased distance
-		local camPos = Vector3.new(0, h * 0.5, dist)
-		cam.CFrame = CFrame.lookAt(camPos, Vector3.new(0, h * 0.5, 0))
+		cam.FieldOfView = 50 -- 50 FOV avoids fish-eye distortion and frames character cleanly
+		local h = math.max(bboxSize.Y, 1)
+		local w = math.max(bboxSize.X, bboxSize.Z, 1)
+		h = math.max(h, w * 1.1) -- ensure width fits comfortably
+		local fovRad = math.rad(cam.FieldOfView * 0.5)
+		local dist = math.max((h * 0.5) / math.tan(fovRad) * 1.18, 5)
+
+		local camTarget = Vector3.new(0, bboxSize.Y * 0.5, 0)
+		local camPos = Vector3.new(0, bboxSize.Y * 0.52, dist)
+		cam.CFrame = CFrame.lookAt(camPos, camTarget)
 		vp.CurrentCamera = cam
 
 		-- ESP-style bounding box
@@ -1442,37 +1386,39 @@ end)
 		-- Store refs for flag binding
 		self.Boxes = { BBox = bbox, BBoxStroke = bboxStroke, Name = nameLbl, HealthBg = healthBarBg, HealthFill = healthBarFill, Dist = distLbl }
 
-		-- Slow idle spin with manual yaw/pitch from mouse drag
+		-- Smooth idle spin around model center, with yaw/pitch mouse drag
+		local centerY = bboxSize.Y * 0.5
 		renderConn = RunService.RenderStepped:Connect(function(dt)
 			if Library.Unloaded or not mannequin.Parent or not outer.Parent then
 				if renderConn then renderConn:Disconnect() renderConn = nil end
 				return
 			end
 			spin = (spin + dt * 0.55) % (math.pi * 2)
-			local baseCF = CFrame.new(0, 0.05, 0)
+			local rotCF = CFrame.new(0, centerY, 0)
 				* CFrame.Angles(0, spin + manualYaw, 0)
 				* CFrame.Angles(math.rad(manualPitch), 0, 0)
+				* CFrame.new(0, -centerY, 0)
 			if rigClone then
-				rigClone:PivotTo(baseCF * rigPivot)
+				rigClone:PivotTo(rotCF)
 			end
 		end)
 		table.insert(Library.Connections, renderConn)
 	end
 
--- Method: toggle preview elements driven by external ESP flags
+	-- Method: toggle preview elements driven by external ESP flags
 	function self:Set(flagState)
-	flagState = flagState or {}
-	-- Recolor the rig live
-	local rigColor = flagState.Color or Library.Theme.Accent1
-	if rigClone then
-		for _, d in ipairs(rigClone:GetDescendants()) do
-			if d:IsA("BasePart") then
-				d.Color = rigColor
+		flagState = flagState or {}
+		-- Recolor the rig: only for the fallback blocky rig, or if explicitly configured to recolor mesh
+		if rigClone and (loadStatus == "fallback" or cfg.RecolorMesh == true) then
+			local rigColor = flagState.Color or Library.Theme.Accent1
+			for _, d in ipairs(rigClone:GetDescendants()) do
+				if d:IsA("BasePart") then
+					d.Color = rigColor
+				end
 			end
 		end
-	end
-	-- Update ESP elements
-	local boxes = self.Boxes
+		-- Update ESP elements
+		local boxes = self.Boxes
 	if boxes then
 		boxes.BBox.Visible = flagState.Box == true
 		boxes.Name.Visible = flagState.Name == true
