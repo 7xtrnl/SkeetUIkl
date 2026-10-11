@@ -1121,9 +1121,15 @@ end)
 		local ok, cloned = pcall(function() return modelInstance:Clone() end)
 		if not ok or not cloned then return nil end
 
-		-- Neutralize scripts inside the imported asset
+		-- Destroy non-essential instances that consume CPU / physics / sound / anims
 		for _, d in ipairs(cloned:GetDescendants()) do
-			if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") then
+			if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript")
+				or d:IsA("Sound")
+				or d:IsA("ParticleEmitter") or d:IsA("Beam") or d:IsA("Trail")
+				or d:IsA("Fire") or d:IsA("Smoke") or d:IsA("Sparkles")
+				or d:IsA("Light") or d:IsA("Highlight")
+				or d:IsA("BillboardGui") or d:IsA("SurfaceGui")
+				or d:IsA("Humanoid") or d:IsA("AnimationController") or d:IsA("Animator") then
 				d:Destroy()
 			end
 		end
@@ -1134,8 +1140,10 @@ end)
 				partCount = partCount + 1
 				d.Anchored = true
 				d.CanCollide = false
+				d.CanTouch = false
 				d.CanQuery = false
 				d.CastShadow = false
+				d.Massless = true
 			end
 		end
 
@@ -1199,7 +1207,6 @@ end)
 		if not rigSource then
 			local ok, loaded = pcall(function()
 				local uri = "rbxassetid://" .. tostring(targetModelId)
-				-- Some executors expose getobjects as a global function
 				if typeof(getobjects) == "function" then
 					local res = getobjects(uri)
 					if typeof(res) == "table" and res[1] then return res[1] end
@@ -1210,7 +1217,6 @@ end)
 			end)
 
 			if (not ok or not loaded) then
-				-- Fallback to InsertService if in Studio server / plugin context
 				pcall(function()
 					local insert = game:GetService("InsertService")
 					local res = insert:LoadAsset(tonumber(targetModelId))
@@ -1272,7 +1278,6 @@ end)
 	local viewport = nil
 	local rigClone = nil
 	local renderConn = nil
-	local bboxSize = nil
 
 	do
 		local vp = Instance.new("ViewportFrame")
@@ -1280,7 +1285,7 @@ end)
 		vp.BackgroundTransparency = 1
 		vp.Active = true -- sink mouse input so drag-to-rotate receives events
 		-- Balanced lighting with specular depth for 3D textures
-		vp.Ambient = Color3.fromRGB(125, 125, 130)
+		vp.Ambient = Color3.fromRGB(120, 120, 125)
 		vp.LightColor = Color3.fromRGB(245, 245, 250)
 		vp.LightDirection = Vector3.new(-1, -1.6, -2)
 		vp.ImageTransparency = 0
@@ -1294,112 +1299,214 @@ end)
 		rigClone.Parent = wm
 		wm.Parent = vp
 
-		-- Normalize model position: feet at y=0, center on X/Z origin
-		local okBBox, bboxCF, bboxSizeTemp = pcall(function() return rigClone:GetBoundingBox() end)
-		bboxSize = (okBBox and bboxSizeTemp) or Vector3.new(2, 6, 2)
-		if bboxSize.Magnitude <= 0 then bboxSize = Vector3.new(2, 6, 2) end
+		-- Normalize model position: calculate center of VISIBLE parts only!
+		local minB = Vector3.new(math.huge, math.huge, math.huge)
+		local maxB = Vector3.new(-math.huge, -math.huge, -math.huge)
+		local countVis = 0
 
-		if okBBox and bboxCF then
-			local targetCenter = Vector3.new(0, bboxSize.Y * 0.5, 0)
-			local offset = targetCenter - bboxCF.Position
-			for _, part in ipairs(rigClone:GetDescendants()) do
-				if part:IsA("BasePart") then
-					part.CFrame = CFrame.new(offset) * part.CFrame
+		for _, d in ipairs(rigClone:GetDescendants()) do
+			if d:IsA("BasePart") then
+				-- Ignore giant invisible collision capsules / hitboxes
+				if d.Transparency < 0.95 and d.Size.Magnitude < 80 then
+					countVis = countVis + 1
+					local cf = d.CFrame
+					local half = d.Size * 0.5
+					local corners = {
+						cf:PointToWorldSpace(Vector3.new( half.X,  half.Y,  half.Z)),
+						cf:PointToWorldSpace(Vector3.new( half.X,  half.Y, -half.Z)),
+						cf:PointToWorldSpace(Vector3.new( half.X, -half.Y,  half.Z)),
+						cf:PointToWorldSpace(Vector3.new( half.X, -half.Y, -half.Z)),
+						cf:PointToWorldSpace(Vector3.new(-half.X,  half.Y,  half.Z)),
+						cf:PointToWorldSpace(Vector3.new(-half.X,  half.Y, -half.Z)),
+						cf:PointToWorldSpace(Vector3.new(-half.X, -half.Y,  half.Z)),
+						cf:PointToWorldSpace(Vector3.new(-half.X, -half.Y, -half.Z)),
+					}
+					for _, c in ipairs(corners) do
+						minB = Vector3.new(math.min(minB.X, c.X), math.min(minB.Y, c.Y), math.min(minB.Z, c.Z))
+						maxB = Vector3.new(math.max(maxB.X, c.X), math.max(maxB.Y, c.Y), math.max(maxB.Z, c.Z))
+					end
+				else
+					if d.Transparency >= 0.95 then
+						d.Transparency = 1
+					end
 				end
 			end
 		end
 
-		-- Camera auto-fit: frame the rig cleanly with natural FOV
+		local visualCenter, visualSize
+		if countVis > 0 then
+			visualCenter = (minB + maxB) * 0.5
+			visualSize = maxB - minB
+		else
+			local ok, cf, sz = pcall(function() return rigClone:GetBoundingBox() end)
+			visualCenter = (ok and cf.Position) or Vector3.zero
+			visualSize = (ok and sz) or Vector3.new(2, 6, 2)
+		end
+
+		-- Center all parts at origin (0, 0, 0) ONCE
+		for _, part in ipairs(rigClone:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CFrame = CFrame.new(-visualCenter) * part.CFrame
+			end
+		end
+
+		-- Camera auto-fit: frame the rig cleanly at origin (0, 0, 0)
 		local cam = Instance.new("Camera")
 		cam.Parent = vp
-		cam.FieldOfView = 50 -- 50 FOV avoids fish-eye distortion and frames character cleanly
-		local h = math.max(bboxSize.Y, 1)
-		local w = math.max(bboxSize.X, bboxSize.Z, 1)
-		h = math.max(h, w * 1.1) -- ensure width fits comfortably
+		cam.FieldOfView = 48
+		local h = math.max(visualSize.Y, 1.5)
+		local w = math.max(visualSize.X, visualSize.Z, 1)
+		local fitH = math.max(h, w * 1.45)
 		local fovRad = math.rad(cam.FieldOfView * 0.5)
-		local dist = math.max((h * 0.5) / math.tan(fovRad) * 1.18, 5)
+		local camDist = math.max((fitH * 0.5) / math.tan(fovRad) * 1.15, 4)
 
-		local camTarget = Vector3.new(0, bboxSize.Y * 0.5, 0)
-		local camPos = Vector3.new(0, bboxSize.Y * 0.52, dist)
-		cam.CFrame = CFrame.lookAt(camPos, camTarget)
+		cam.CFrame = CFrame.lookAt(Vector3.new(0, 0, camDist), Vector3.zero)
 		vp.CurrentCamera = cam
 
-		-- ESP-style bounding box
-		local bbox = New("Frame", {
-			Size = UDim2.fromScale(0.92, 0.96),
-			Position = UDim2.fromScale(0.04, 0.02),
+		-- Clean Skeet-Style 3-layer Bounding Box (centered on mannequin)
+		local espBox = New("Frame", {
+			Size = UDim2.fromOffset(106, 172),
+			Position = UDim2.fromScale(0.5, 0.5),
+			AnchorPoint = Vector2.new(0.5, 0.5),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
-			Visible = false,
 			ZIndex = 65,
 			Parent = mannequin,
+		})
+
+		-- Outer black outline (1px)
+		New("UIStroke", {
+			Color = Color3.fromRGB(0, 0, 0),
+			Thickness = 1,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+			Parent = espBox,
+		})
+
+		-- Main colored box stroke
+		local bboxMain = New("Frame", {
+			Size = UDim2.new(1, -2, 1, -2),
+			Position = UDim2.fromOffset(1, 1),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ZIndex = 66,
+			Parent = espBox,
 		})
 		local bboxStroke = New("UIStroke", {
 			Color = Library.Theme.Accent1,
 			Thickness = 1,
-			Transparency = 0.2,
-			Parent = bbox,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+			Parent = bboxMain,
 		})
+
+		-- Inner black outline (1px)
+		local bboxInner = New("Frame", {
+			Size = UDim2.new(1, -2, 1, -2),
+			Position = UDim2.fromOffset(1, 1),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ZIndex = 67,
+			Parent = bboxMain,
+		})
+		New("UIStroke", {
+			Color = Color3.fromRGB(0, 0, 0),
+			Thickness = 1,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+			Parent = bboxInner,
+		})
+
+		-- Name: Centered on top of box with dark shadow
 		local nameLbl = New("TextLabel", {
-			Size = UDim2.new(1, 0, 0, 12),
-			AnchorPoint = Vector2.new(0, 1),
-			Position = UDim2.fromScale(0, -0.02),
+			Size = UDim2.new(1, 20, 0, 12),
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 0, -4),
 			BackgroundTransparency = 1,
 			Font = Library.Theme.FontBold,
-			TextSize = Library.Theme.FontSize - 2,
-			TextColor3 = Library.Theme.Text,
+			TextSize = 11,
+			TextColor3 = Color3.fromRGB(245, 245, 245),
+			TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+			TextStrokeTransparency = 0,
 			Text = "springtrap",
-			Visible = false,
-			ZIndex = 65,
-			Parent = mannequin,
+			Visible = true,
+			ZIndex = 68,
+			Parent = espBox,
 		})
+
+		-- Health Bar: Vertical bar on the left
 		local healthBarBg = New("Frame", {
-			Size = UDim2.new(1, 0, 0, 4),
-			Position = UDim2.fromScale(0, 1.0),
-			AnchorPoint = Vector2.new(0, 0),
-			BackgroundColor3 = Color3.fromRGB(30, 30, 34),
+			Size = UDim2.new(0, 3, 1, 0),
+			Position = UDim2.new(0, -6, 0, 0),
+			BackgroundColor3 = Color3.fromRGB(15, 15, 18),
 			BorderSizePixel = 0,
-			Visible = false,
-			ZIndex = 65,
-			Parent = mannequin,
+			Visible = true,
+			ZIndex = 68,
+			Parent = espBox,
 		})
-		local healthBarFill = New("Frame", {
-			Size = UDim2.new(0.72, 0, 1, 0),
-			BackgroundColor3 = Library.Theme.Accent1,
-			BorderSizePixel = 0,
-			ZIndex = 66,
+		New("UIStroke", {
+			Color = Color3.fromRGB(0, 0, 0),
+			Thickness = 1,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 			Parent = healthBarBg,
 		})
+		local healthBarFill = New("Frame", {
+			Size = UDim2.new(1, 0, 0.72, 0),
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.new(0, 0, 1, 0),
+			BackgroundColor3 = Color3.fromRGB(80, 225, 80),
+			BorderSizePixel = 0,
+			ZIndex = 69,
+			Parent = healthBarBg,
+		})
+
+		-- Distance: Centered under box
 		local distLbl = New("TextLabel", {
-			Size = UDim2.new(1, 0, 0, 10),
-			Position = UDim2.fromScale(0, 1.06),
+			Size = UDim2.new(1, 20, 0, 10),
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 1, 3),
 			BackgroundTransparency = 1,
 			Font = Library.Theme.Font,
-			TextSize = Library.Theme.FontSize - 3,
-			TextColor3 = Library.Theme.TextDim,
+			TextSize = 9,
+			TextColor3 = Color3.fromRGB(195, 195, 200),
+			TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+			TextStrokeTransparency = 0,
 			Text = "82m",
-			Visible = false,
-			ZIndex = 65,
-			Parent = mannequin,
+			Visible = true,
+			ZIndex = 68,
+			Parent = espBox,
 		})
 
 		-- Store refs for flag binding
-		self.Boxes = { BBox = bbox, BBoxStroke = bboxStroke, Name = nameLbl, HealthBg = healthBarBg, HealthFill = healthBarFill, Dist = distLbl }
+		self.Boxes = {
+			BBox = espBox,
+			BBoxStroke = bboxStroke,
+			Name = nameLbl,
+			HealthBg = healthBarBg,
+			HealthFill = healthBarFill,
+			Dist = distLbl,
+		}
 
-		-- Smooth idle spin around model center, with yaw/pitch mouse drag
-		local centerY = bboxSize.Y * 0.5
+		-- ZERO-LAG CAMERA ORBIT & LIVE FEATURE SYNC
 		renderConn = RunService.RenderStepped:Connect(function(dt)
 			if Library.Unloaded or not mannequin.Parent or not outer.Parent then
 				if renderConn then renderConn:Disconnect() renderConn = nil end
 				return
 			end
-			spin = (spin + dt * 0.55) % (math.pi * 2)
-			local rotCF = CFrame.new(0, centerY, 0)
-				* CFrame.Angles(0, spin + manualYaw, 0)
-				* CFrame.Angles(math.rad(manualPitch), 0, 0)
-				* CFrame.new(0, -centerY, 0)
-			if rigClone then
-				rigClone:PivotTo(rotCF)
+			spin = (spin + dt * 0.5) % (math.pi * 2)
+
+			-- Rotate ONLY camera around origin (0, 0, 0) — 60+ FPS, ZERO physics overhead!
+			local camRot = CFrame.Angles(0, spin + manualYaw, 0) * CFrame.Angles(math.rad(manualPitch), 0, 0)
+			local camPos = (camRot * CFrame.new(0, 0, camDist)).Position
+			cam.CFrame = CFrame.lookAt(camPos, Vector3.zero)
+
+			-- Live sync with menu flags (automatically reflects toggle & colorpicker changes!)
+			if Library.Flags then
+				if Library.Flags.esp_box ~= nil then espBox.Visible = (Library.Flags.esp_box == true) end
+				if Library.Flags.esp_name ~= nil then nameLbl.Visible = (Library.Flags.esp_name == true) end
+				if Library.Flags.esp_health ~= nil then healthBarBg.Visible = (Library.Flags.esp_health == true) end
+				if Library.Flags.esp_distance ~= nil then distLbl.Visible = (Library.Flags.esp_distance == true) end
+				local curCol = Library.Flags.esp_tracer_col or Library.Theme.Accent1
+				if curCol then
+					bboxStroke.Color = curCol
+				end
 			end
 		end)
 		table.insert(Library.Connections, renderConn)
@@ -1408,7 +1515,6 @@ end)
 	-- Method: toggle preview elements driven by external ESP flags
 	function self:Set(flagState)
 		flagState = flagState or {}
-		-- Recolor the rig: only for the fallback blocky rig, or if explicitly configured to recolor mesh
 		if rigClone and (loadStatus == "fallback" or cfg.RecolorMesh == true) then
 			local rigColor = flagState.Color or Library.Theme.Accent1
 			for _, d in ipairs(rigClone:GetDescendants()) do
@@ -1417,19 +1523,22 @@ end)
 				end
 			end
 		end
-		-- Update ESP elements
 		local boxes = self.Boxes
-	if boxes then
-		boxes.BBox.Visible = flagState.Box == true
-		boxes.Name.Visible = flagState.Name == true
-		boxes.HealthBg.Visible = flagState.Health == true
-		boxes.Dist.Visible = flagState.Distance == true
-		boxes.Name.Text = flagState.ShowName or "springtrap"
-		boxes.Dist.Text = tostring(flagState.ShowDist or "82m")
-		boxes.HealthFill.Size = UDim2.new(math.clamp(flagState.HealthValue or 0.72, 0, 1), 0, 1, 0)
-		if boxes.BBox.Visible then boxes.BBoxStroke.Color = (flagState.Color or Library.Theme.Accent1) end
+		if boxes then
+			if flagState.Box ~= nil then boxes.BBox.Visible = flagState.Box == true end
+			if flagState.Name ~= nil then boxes.Name.Visible = flagState.Name == true end
+			if flagState.Health ~= nil then boxes.HealthBg.Visible = flagState.Health == true end
+			if flagState.Distance ~= nil then boxes.Dist.Visible = flagState.Distance == true end
+			if flagState.ShowName then boxes.Name.Text = tostring(flagState.ShowName) end
+			if flagState.ShowDist then boxes.Dist.Text = tostring(flagState.ShowDist) end
+			if flagState.HealthValue then
+				boxes.HealthFill.Size = UDim2.new(1, 0, math.clamp(flagState.HealthValue, 0, 1), 0)
+			end
+			if flagState.Color then
+				boxes.BBoxStroke.Color = flagState.Color
+			end
+		end
 	end
-end
 
 -- Drag on header, lock prevents it
 local dragging, dragStart, startPos
